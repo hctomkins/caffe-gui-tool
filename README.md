@@ -12,9 +12,9 @@ Apt-get Binaries (~5kb download, and quicker apt-get download)
 - sudo apt-get install blender, and launch blender with 'blender' command
 - download two python scripts
 - file --> user preferences --> addons --> install from file --> select Caffe Nodes script --> install
-- tick the checkbox in the newly appeared boxe's top right corner
+- tick the checkbox in the newly appeared box's top right corner
 - file --> user preferences --> addons --> install from file --> select Caffe Generate script --> install
-- tick the checkbox in the newly appeared boxe's top right corner
+- tick the checkbox in the newly appeared box's top right corner
 - user preferences --> file --> uncheck relative paths (IMPORTANT)
 - click on the cube icon in the bottom left
 - click 'node editor' in the popup menu
