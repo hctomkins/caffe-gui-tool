@@ -2,7 +2,8 @@ caffe-gui-tool
 ==============
 
 Node based Gui for creating caffe networks
-NB - Only clone the prebuilt branch if absolutely neccessary!!
+
+Master branch requires manual setup, although no compilation, and prebuilt is ready to go, but ~100mb compressed
 
 Installation
 ==============
