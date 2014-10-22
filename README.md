@@ -25,9 +25,6 @@ Apt-get Binaries (~5kb download, and quicker apt-get download)
 - file --> user preferences --> save user settings (on the bottom of the window(
 - restart blender
 
-Git prebuilt Binaries (Simpler, but less reliable)
-- launch blender with ./blender in directory
-
 Use
 ============
 - Click the 'New' button on the bottom part of the screen to create a new network
