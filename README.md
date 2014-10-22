@@ -25,7 +25,7 @@ Apt-get Binaries (~5kb download, and quicker apt-get download)
 - restart blender
 
 Git prebuilt Binaries (Simpler, but less reliable)
-1. launch blender with ./blender in directory
+- launch blender with ./blender in directory
 
 Use
 ============
