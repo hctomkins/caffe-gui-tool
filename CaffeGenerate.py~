@@ -290,7 +290,6 @@ def solvertemplate(type, learningrate, testinterval, testruns, maxiter, displayi
             gamma: 0.1\n\
             stepsize: 10000\n\
             weight_decay: 0.0005\n\
-            momentum: 0.95\n\
             solver_type: ADAGRAD\n'
     elif type == 'NAG':
         tsstring = \
