@@ -31,7 +31,7 @@ Use
 - Name your network in this box, and ENSURE THE 'F' BUTTON NEXT TO THE NAME IS CHECKED
 - Use shift+a to start adding nodes
 - Join up, and fill in all the required fields to your taste. All networks require a data node, and solver node.
-- When ready, press spacebar.
+- When ready, select all nodes by single, (or double if required) tapping 'a', then press spacebar.
 - type 'solution' in the search bar
 - select 'create solution' and press enter
 - This will create the required prototxt files in the config directory.
