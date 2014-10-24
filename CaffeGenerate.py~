@@ -323,16 +323,6 @@ def solvertemplate(type, learningrate, testinterval, testruns, maxiter, displayi
     solverstring = genericstring + tsstring
     return solverstring
 
-def deploytemplate(batch,channels,size,datain):
-    deploystring =\
-    'name: "Autogen"\n\
-    input: "%s"\n\
-    input_dim: %i\n\
-    input_dim: %i\n\
-    input_dim: %i\n\
-    input_dim: %i\n' % (datain,batch,channels,size,size)
-    return deploystring
-
 def scripttemplate(caffepath,configpath,solvername,gpu):
     solverstring = configpath + '%s_solver.prototxt' % solvername
     caffestring = caffepath + 'caffe'
@@ -350,7 +340,6 @@ class Solve(bpy.types.Operator):
         gbottoms = []
         g2bottoms = []
         gcode = []
-        dcode = []
 
         # The original script
         for node in context.selected_nodes:
@@ -369,50 +358,34 @@ class Solve(bpy.types.Operator):
                     bottoms.extend([bottom])
             if node.bl_idname == 'DataNodeType':
                 string = datatemplate(node.name, node.batchsize, node.trainpath, node.testpath, node.supervised, node.maxval)
-                dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
             elif node.bl_idname == 'PoolNodeType':
                 string = pooltemplate(node.name, node.kernel, node.stride, node.mode, bottoms[0])
-                dstring = string
             elif node.bl_idname == 'ConvNodeType':
                 string = convtemplate(node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride, bottoms[0],0,node.filterlr,node.biaslr,node.filterdecay,node.biasdecay,node.std,node.weights)
-                dstring = string
             elif node.bl_idname == 'FCNodeType':
                 string = FCtemplate(node.name, node.outputnum, bottoms[0],node.sparse,node.weights,0,node.filterlr,node.biaslr,node.filterdecay,node.biasdecay,node.std,node.sparsity)
-                dstring = string
             elif node.bl_idname == 'FlattenNodeType':
                 string = flattentemplate(node.name, bottoms[0])
-                dstring = string
             elif node.bl_idname == 'LRNNodeType':
                 string = LRNtemplate(node.name, bottoms[0], node.alpha, node.beta, node.size, node.mode)
-                dstring = string
             elif node.bl_idname == 'AcNodeType':
                 string = NLtemplate(node.name, bottoms[0], node.mode)
-                dstring = string
-                dstring = string
             elif node.bl_idname == 'ReluNodeType':
                 string = Relutemplate(bottoms[0], node.name, node.Negativeg)
-                dstring = string
             elif node.bl_idname == 'DropoutNodeType':
                 string = dropouttemplate(node.name, bottoms[0], node.fac)
-                dstring = string
             elif node.bl_idname == 'SMLossNodeType':
                 string = SMtemplate(node.name, bottoms[0], node.w)
-                dstring = ''
             elif node.bl_idname == 'SCELossNodeType':
                 string = SCEtemplate(node.name, bottoms[0], bottoms[1], node.w)
-                dstring = ''
             elif node.bl_idname == 'EULossNodeType':
                 string = EUtemplate(node.name, bottoms[0], bottoms[1], node.w)
-                dstring = ''
             elif node.bl_idname == 'ConcatNodeType':
                 string = Concattemplate(node.name, bottoms[0], bottoms[1], node.dim)
-                dstring = string
             elif node.bl_idname == 'AccuracyNodeType':
                 string = accuracytemplate(node.name, bottoms[0], node.Testonly)
-                dstring = ''
             elif node.bl_idname == 'NodeReroute':
                 string = ''
-                dstring = ''
             elif node.bl_idname == 'SolverNodeType':
                 solverstring = solvertemplate(node.solver, node.learningrate, node.testinterval, node.testruns, node.maxiter,
                                         node.displayiter, node.snapshotiter, node.solvername, node.snapshotpath,
@@ -424,7 +397,6 @@ class Solve(bpy.types.Operator):
                 print (node.bl_idname)
             if node.bl_idname != 'SolverNodeType':
                 gcode.extend([string])
-                dcode.extend([dstring])
                 gtops.extend([node.name])
                 try:
                     gbottoms.extend([bottoms[0]])
@@ -435,24 +407,18 @@ class Solve(bpy.types.Operator):
                 except IndexError:
                     g2bottoms.extend([str(random.random())])
         for juggle in range(30):
-            gtops,gbottoms,g2bottoms,gcode,dcode = self.juggleorder(gtops,gbottoms, g2bottoms,gcode,0,dcode)
+            gtops,gbottoms,g2bottoms,gcode = self.juggleorder(gtops,gbottoms, g2bottoms,gcode,0)
         #for chunk in gcode:
             #print (chunk)
-            gtops,gbottoms,g2bottoms,gcode,dcode = self.juggleorder(gtops,gbottoms, g2bottoms,gcode,1,dcode)
+            gtops,gbottoms,g2bottoms,gcode = self.juggleorder(gtops,gbottoms, g2bottoms,gcode,1)
         solution = ''
         for chunk in gcode:
             solution = solution + chunk
-        dsolution = ''
-        for chunk in dcode:
-            dsolution = dsolution + chunk
         #print (solution)
         os.chdir(configpath)
         ttfile = open('%s_train_test.prototxt' %solvername,mode='w')
         ttfile.write(solution)
         ttfile.close()
-        depfile = open('%s_deploy.prototxt' %solvername,mode='w')
-        depfile.write(dsolution)
-        depfile.close()
         solvefile = open('%s_solver.prototxt' %solvername, mode='w')
         solvefile.write(solverstring)
         solvefile.close()
@@ -461,7 +427,7 @@ class Solve(bpy.types.Operator):
         scriptfile.close()
         return {'FINISHED'}  # this lets blender know the operator finished successfully.
 
-    def juggleorder(self, names, refs, refs2, code,prefsocket, dcode):
+    def juggleorder(self, names, refs, refs2, code,prefsocket):
         goodorder = 0
         print (refs)
         print(refs2)
@@ -505,7 +471,7 @@ class Solve(bpy.types.Operator):
                     #time.sleep(10)
                 #ref = 10000000
                 if ref < loc:
-                    names,refs,refs2,code,dcode = self.swap(loc,ref,(names,refs,refs2,code,dcode))
+                    names,refs,refs2,code = self.swap(loc,ref,(names,refs,refs2,code))
                     checks[loc] = 0
                 else:
                     checks[loc] = 0
@@ -514,7 +480,7 @@ class Solve(bpy.types.Operator):
             print (refs2)
             print (checks)
                 # if in wrong order
-        return names,refs,refs2,code,dcode
+        return names,refs,refs2,code
 
     def swap(self,orig,dest,lists):
         for list in lists:
