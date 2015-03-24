@@ -71,7 +71,7 @@ def datatemplate(name, batchsize, trainpath, testpath,supervised, maxval=255):
         }\n\
         layer {\n\
         name: "%s"\n\
-        type: DATA\n\
+        type: "Data"\n\
         top: "%s"\n\
         %s\n\
         data_param {\n\
