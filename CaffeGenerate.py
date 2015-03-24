@@ -388,10 +388,10 @@ class Solve(bpy.types.Operator):
                 string = pooltemplate(node.name, node.kernel, node.stride, node.mode, bottoms[0])
                 dstring = string
             elif node.bl_idname == 'ConvNodeType':
-                string = convtemplate(node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride, bottoms[0],0,node.filterlr,node.biaslr,node.filterdecay,node.biasdecay,node.std,node.weights)
+                string = convtemplate(node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride, bottoms[0], node.biasfill ,node.filterlr,node.biaslr,node.filterdecay,node.biasdecay,node.std,node.weights)
                 dstring = string
             elif node.bl_idname == 'FCNodeType':
-                string = FCtemplate(node.name, node.outputnum, bottoms[0],node.sparse,node.weights,0,node.filterlr,node.biaslr,node.filterdecay,node.biasdecay,node.std,node.sparsity)
+                string = FCtemplate(node.name, node.outputnum, bottoms[0],node.sparse,node.weights,node.biasfill,node.filterlr,node.biaslr,node.filterdecay,node.biasdecay,node.std,node.sparsity)
                 dstring = string
             elif node.bl_idname == 'FlattenNodeType':
                 string = flattentemplate(node.name, bottoms[0])
