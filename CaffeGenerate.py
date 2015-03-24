@@ -12,13 +12,17 @@ import os
 
 def convtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr, blr, fdr, bdr, std, weight_filler):
     string = \
-        'layers {\n\
+        'layer {\n\
         name: "%s"\n\
-        type: CONVOLUTION\n\
-        blobs_lr: %i\n\
-        blobs_lr: %i\n\
-        weight_decay: %i\n\
-        weight_decay: %i\n\
+        type: "convolution"\n\
+        param {\n\
+        lr_mult: %i\n\
+        decay_mult: %i\n\
+        }\n\
+        param {\n\
+        lr_mult: %i\n\
+        decay_mult: %i\n\
+        }\n\
         convolution_param {\n\
         num_output: %i\n\
         pad: %i\n\
@@ -36,7 +40,7 @@ def convtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr, 
         bottom: "%s"\n\
         top: "%s"\n\
         }\n' \
-        % (name, flr, blr, fdr,bdr,OutputLs, Padding, kernelsize, Stride, weight_filler, std, bfv, bottom,name)
+        % (name, flr, fdr, blr ,bdr,OutputLs, Padding, kernelsize, Stride, weight_filler, std, bfv, bottom,name)
     tb = [name, bottom]
     return string
 
@@ -48,7 +52,24 @@ def datatemplate(name, batchsize, trainpath, testpath,supervised, maxval=255):
         lstring = 'top: "label"'
     sf = 1.0 / (maxval + 1)
     string = \
-        'layers {\n\
+        'layer {\n\
+        name: "%s"\n\
+        type: "Data"\n\
+        top: "%s"\n\
+        %s\n\
+        data_param {\n\
+        source: "%s"\n\
+        backend: LMDB\n\
+        batch_size: %i\n\
+        }\n\
+        transform_param {\n\
+        scale: %f\n\
+        }\n\
+        include { \n\
+        phase: TRAIN \n\
+        }\n\
+        }\n\
+        layer {\n\
         name: "%s"\n\
         type: DATA\n\
         top: "%s"\n\
@@ -61,22 +82,9 @@ def datatemplate(name, batchsize, trainpath, testpath,supervised, maxval=255):
         transform_param {\n\
         scale: %f\n\
         }\n\
-        include: { phase: TRAIN }\n\
+        include {\n\
+        phase: TEST \n\
         }\n\
-        layers {\n\
-        name: "%s"\n\
-        type: DATA\n\
-        top: "%s"\n\
-        %s\n\
-        data_param {\n\
-        source: "%s"\n\
-        backend: LMDB\n\
-        batch_size: %i\n\
-        }\n\
-        transform_param {\n\
-        scale: %f\n\
-        }\n\
-        include: { phase: TEST }\n\
         }\n' \
         % (name, name, lstring,trainpath, batchsize, sf, name, name,lstring, testpath, batchsize, sf)
     return string
@@ -84,9 +92,9 @@ def datatemplate(name, batchsize, trainpath, testpath,supervised, maxval=255):
 
 def pooltemplate(name, kernel, stride, mode, bottom):
     string = \
-        'layers {\n\
+        'layer {\n\
         name: "%s"\n\
-        type: POOLING\n\
+        type: "Pooling"\n\
         bottom: "%s"\n\
         top: "%s"\n\
         pooling_param {\n\
@@ -115,13 +123,17 @@ def FCtemplate(name, outputs, bottom, sparse, weight_filler, bfv,flr,blr,fdr,bdr
         type: "xavier"\n\
         }\n'
     string = \
-        'layers {\n\
+        'layer {\n\
         name: "%s"\n\
-        type: INNER_PRODUCT\n\
-        blobs_lr: %i\n\
-        blobs_lr: %i\n\
-        weight_decay: %i\n\
-        weight_decay: %i\n\
+        type: "InnerProduct"\n\
+        param {\n\
+        lr_mult: %i\n\
+        decay_mult: %i\n\
+        }\n\
+        param {\n\
+        lr_mult: %i\n\
+        decay_mult: %i\n\
+        }\n\
         inner_product_param {\n\
         num_output: %i\n\
         %s\n\
@@ -133,17 +145,17 @@ def FCtemplate(name, outputs, bottom, sparse, weight_filler, bfv,flr,blr,fdr,bdr
         bottom: "%s"\n\
         top: "%s"\n\
         }\n' \
-        % (name, flr, blr, fdr,bdr,outputs, wfstring, bfv, bottom, name)
+        % (name, flr, fdr, blr, bdr,outputs, wfstring, bfv, bottom, name)
     return string
 
 
 def flattentemplate(name, bottom):
     string = \
-        'layers {\n\
+        'layer {\n\
         bottom: "%s"\n\
         top: "%s"\n\
         name: "%s"\n\
-        type: FLATTEN\n\
+        type: "Flatten"\n\
         }\n' \
         % (bottom, name, name)
     return string
@@ -151,9 +163,9 @@ def flattentemplate(name, bottom):
 
 def dropouttemplate(name, bottom, dropout):
     string = \
-    'layers {\n\
+    'layer {\n\
     name: "%s"\n\
-    type: DROPOUT\n\
+    type: "Dropout"\n\
     bottom: "%s"\n\
     top: "%s"\n\
     dropout_param {\n\
@@ -164,9 +176,9 @@ def dropouttemplate(name, bottom, dropout):
 
 def LRNtemplate(name, bottom, alpha, beta, size, mode):
     string = \
-        'layers {\n\
+        'layer {\n\
         name: "%s"\n\
-        type: LRN\n\
+        type: "LRN"\n\
         bottom: "%s"\n\
         top: "%s"\n\
         lrn_param {\n\
@@ -182,7 +194,7 @@ def LRNtemplate(name, bottom, alpha, beta, size, mode):
 
 def NLtemplate(name, bottom, mode):
     string = \
-        'layers {\n\
+        'layer {\n\
         name: "%s"\n\
         bottom: "%s"\n\
         top: "%s"\n\
@@ -194,9 +206,9 @@ def NLtemplate(name, bottom, mode):
 
 def Relutemplate(bottom, name, Negativeg):
     string = \
-        'layers {\n\
+        'layer {\n\
         name: "%s"\n\
-        type: RELU\n\
+        type: "ReLU"\n\
         bottom: "%s"\n\
         top: "%s"\n\
         }\n' \
@@ -206,9 +218,9 @@ def Relutemplate(bottom, name, Negativeg):
 
 def SMtemplate(name, bottom, w):
     string = \
-        'layers {\n\
+        'layer {\n\
         name: "loss"\n\
-        type: SOFTMAX_LOSS\n\
+        type: "Softmax"\n\
         bottom: "%s"\n\
         bottom: "label"\n\
         top: "%s"\n\
@@ -220,9 +232,9 @@ def SMtemplate(name, bottom, w):
 
 def SCEtemplate(name, bottom1, bottom2, w):
     string = \
-        'layers {\n\
+        'layer {\n\
         name: "loss"\n\
-        type: SIGMOID_CROSS_ENTROPY_LOSS\n\
+        type: "SigmoidCrossEntropyLoss"\n\
         bottom: "%s"\n\
         bottom: "%s"\n\
         top: "%s"\n\
@@ -234,9 +246,9 @@ def SCEtemplate(name, bottom1, bottom2, w):
 
 def EUtemplate(name, bottom1, bottom2, w):
     string = \
-        'layers {\n\
+        'layer {\n\
         name: "loss"\n\
-        type: EUCLIDEAN_LOSS\n\
+        type: "EuclideanLoss"\n\
         bottom: "%s"\n\
         bottom: "%s"\n\
         top: "%s"\n\
@@ -248,12 +260,12 @@ def EUtemplate(name, bottom1, bottom2, w):
 
 def Concattemplate(name, bottom1, bottom2, dim):
     string = \
-        'layers {\n\
+        'layer {\n\
         name: "%s"\n\
         bottom: "%s"\n\
         bottom: "%s"\n\
         top: "%s"\n\
-        type: CONCAT\n\
+        type: "Concat"\n\
         concat_param {\n\
         concat_dim: %i\n\
         }\n\
@@ -264,13 +276,15 @@ def Concattemplate(name, bottom1, bottom2, dim):
 
 def accuracytemplate(name, bottom, Testonly):
     if Testonly == 1:
-        Testonly = 'include: { phase: TEST }'
+        Testonly = 'include { \n\
+            phase: TEST \n\
+            }'
     else:
         Testonly = ''
     string = \
-        'layers {\n\
+        'layer {\n\
         name: "%s"\n\
-        type: ACCURACY\n\
+        type: "Accuracy"\n\
         bottom: "%s"\n\
         bottom: "label"\n\
         top: "%s"\n\
