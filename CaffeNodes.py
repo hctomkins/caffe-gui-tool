@@ -428,6 +428,7 @@ class ConvNode(Node, MyCustomTreeNode):
     biaslr = bpy.props.IntProperty(default=2, max=5, min=0)
     filterdecay = bpy.props.IntProperty(default=1, max=5, min=0)
     biasdecay = bpy.props.IntProperty(default=0, max=5, min=0)
+    biasfill = bpy.props.FloatProperty(default=0.4, soft_max=1.0, min=0)
     # === Optional Functions ===
     # Initialization function, called when a new node is created.
     # This is the most common place to create the sockets for a node, as shown below.
@@ -459,6 +460,7 @@ class ConvNode(Node, MyCustomTreeNode):
         layout.prop(self, "biasdecay")
         layout.prop(self, "weights")
         layout.prop(self, "std")
+        layout.prop(self, "biasfill")
         # Detail buttons in the sidebar.
         # If this function is not defined, the draw_buttons function is used instead
 
@@ -497,6 +499,7 @@ class FCNode(Node, MyCustomTreeNode):
     biaslr = bpy.props.IntProperty(default=2, max=5, min=0)
     filterdecay = bpy.props.IntProperty(default=1, max=5, min=0)
     biasdecay = bpy.props.IntProperty(default=0, max=5, min=0)
+    biasfill = bpy.props.FloatProperty(default=0.4, soft_max=1.0, min=0)
     # === Optional Functions ===
     # Initialization function, called when a new node is created.
     # This is the most common place to create the sockets for a node, as shown below.
@@ -527,6 +530,7 @@ class FCNode(Node, MyCustomTreeNode):
         layout.prop(self, "std")
         layout.prop(self, "sparsity")
         layout.prop(self, "sparse")
+        layout.prop(self, "biasfill")
         # Detail buttons in the sidebar.
         # If this function is not defined, the draw_buttons function is used instead
 
