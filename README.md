@@ -3,7 +3,7 @@ Caffe Gui Tool
 
 [Node based Gui for creating caffe networks](http://chasvortex.github.io/caffe-gui-tool/)
 
-[For installtion instructions, and everything you could possibly want caffe-gui-tool related, please see http://chasvortex.github.io/caffe-gui-tool/](http://chasvortex.github.io/caffe-gui-tool/)
+[For installation instructions, and everything you could possibly want caffe-gui-tool related, please see http://chasvortex.github.io/caffe-gui-tool/](http://chasvortex.github.io/caffe-gui-tool/)
 
 ConvNet
 
