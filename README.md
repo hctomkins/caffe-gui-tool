@@ -3,7 +3,7 @@ Caffe Gui Tool
 
 Node based Gui for creating caffe networks
 
-Master branch requires manual setup, although no compilation, and prebuilt is ready to go, but ~100mb compressed
+NOTE: Video tutorial on setup and installation:https://vimeo.com/128736028
 
 ConvNet
 
