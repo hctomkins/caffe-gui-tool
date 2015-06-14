@@ -1,4 +1,3 @@
-__author__ = 'hugh'
 bl_info = {
     "name": "Creat Caffe solution",
     "category": "Object",
