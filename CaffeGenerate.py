@@ -1,3 +1,4 @@
+__author__ = 'hugh'
 bl_info = {
     "name": "Creat Caffe solution",
     "category": "Object",
@@ -8,6 +9,7 @@ import random
 import numpy as np
 import time
 import os
+
 
 def convtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr, blr, fdr, bdr, std, weight_filler):
     string = \
@@ -39,53 +41,105 @@ def convtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr, 
         bottom: "%s"\n\
         top: "%s"\n\
         }\n' \
-        % (name, flr, fdr, blr ,bdr,OutputLs, Padding, kernelsize, Stride, weight_filler, std, bfv, bottom,name)
+        % (name, flr, fdr, blr, bdr, OutputLs, Padding, kernelsize, Stride, weight_filler, std, bfv, bottom, name)
     tb = [name, bottom]
     return string
 
 
-def datatemplate(name, batchsize, trainpath, testpath,supervised, maxval=255):
+def datatemplate(name, batchsize, trainpath, testpath, supervised, dbtype, meanused, imsize, maxval=255, mirror=0, meanfile=0):
+    sf = 1.0 / (maxval + 1)
+    try:
+        extralabel = str(int(name[-1]))
+    except ValueError:
+        extralabel =''
+
+    if meanused != 0:
+        meanstring = 'mean_file: "%s"' % meanfile
+    else:
+        meanstring = ''
     if supervised == 0:
         lstring = ''
     else:
-        lstring = 'top: "label"'
-    sf = 1.0 / (maxval + 1)
+        lstring = 'top: "label%s"' %extralabel
+    if dbtype == 'LMDB':
+        typestring = 'Data'
+        paramstring = \
+            'data_param {\n\
+            source: "%s"\n\
+            backend: LMDB\n\
+            batch_size: %i\n\
+            }\n\
+            transform_param {\n\
+            mirror: %i\n\
+            scale: %f\n\
+            %s\n\
+            }\n' \
+            % (trainpath, batchsize, mirror, sf, meanstring)
+        testparamstring = \
+            'data_param {\n\
+            source: "%s"\n\
+            backend: LMDB\n\
+            batch_size: %i\n\
+            }\n\
+            transform_param {\n\
+            mirror: %i\n\
+            scale: %f\n\
+            %s \n\
+            }\n' \
+            % (testpath, batchsize, mirror, sf, meanstring)
+    elif dbtype == 'Image files':
+        typestring = 'ImageData'
+        paramstring = \
+            'transform_param {\n\
+            mirror: %i\n\
+            scale: %f\n\
+            %s\n\
+            }\n\
+            image_data_param {\n\
+            source: "%s"\n\
+            batch_size: %i\n\
+            new_height: %i\n\
+            new_width: %i\n\
+            }\n' \
+            % (mirror, sf, meanstring, trainpath, batchsize,imsize,imsize)
+        testparamstring = \
+            'transform_param {\n\
+            mirror: %i\n\
+            scale: %f\n\
+            %s\n\
+            }\n\
+            image_data_param {\n\
+            source: "%s"\n\
+            batch_size: %i\n\
+            new_height: %i\n\
+            new_width: %i\n\
+            }\n' \
+            % (mirror, sf, meanstring, testpath, batchsize,imsize,imsize)
+    else:
+        print (dbtype)
+        raise EOFError
     string = \
         'layer {\n\
         name: "%s"\n\
-        type: "Data"\n\
+        type: "%s"\n\
         top: "%s"\n\
         %s\n\
-        data_param {\n\
-        source: "%s"\n\
-        backend: LMDB\n\
-        batch_size: %i\n\
-        }\n\
-        transform_param {\n\
-        scale: %f\n\
-        }\n\
+        %s \n\
         include { \n\
         phase: TRAIN \n\
         }\n\
         }\n\
         layer {\n\
         name: "%s"\n\
-        type: "Data"\n\
+        type: "%s"\n\
         top: "%s"\n\
         %s\n\
-        data_param {\n\
-        source: "%s"\n\
-        backend: LMDB\n\
-        batch_size: %i\n\
-        }\n\
-        transform_param {\n\
-        scale: %f\n\
-        }\n\
+        %s\n\
         include {\n\
         phase: TEST \n\
         }\n\
         }\n' \
-        % (name, name, lstring,trainpath, batchsize, sf, name, name,lstring, testpath, batchsize, sf)
+        % (name, typestring, name, lstring, paramstring, name, typestring, name, lstring, testparamstring)
     return string
 
 
@@ -106,17 +160,17 @@ def pooltemplate(name, kernel, stride, mode, bottom):
     return string
 
 
-def FCtemplate(name, outputs, bottom, sparse, weight_filler, bfv,flr,blr,fdr,bdr,std,sparsity):
+def FCtemplate(name, outputs, bottom, sparse, weight_filler, bfv, flr, blr, fdr, bdr, std, sparsity):
     if weight_filler == 'gaussian':
-        if sparsity == 1 :
-            sparsestring = 'sparse: %i' %sparse
+        if sparsity == 1:
+            sparsestring = 'sparse: %i' % sparse
         else:
             sparsestring = ''
         wfstring = 'weight_filler {\n\
         type: "gaussian"\n\
         std: %f\n\
         %s\n\
-        }\n' %(std,sparsestring)
+        }\n' % (std, sparsestring)
     else:
         wfstring = 'weight_filler {\n\
         type: "xavier"\n\
@@ -144,7 +198,7 @@ def FCtemplate(name, outputs, bottom, sparse, weight_filler, bfv,flr,blr,fdr,bdr
         bottom: "%s"\n\
         top: "%s"\n\
         }\n' \
-        % (name, flr, fdr, blr, bdr,outputs, wfstring, bfv, bottom, name)
+        % (name, flr, fdr, blr, bdr, outputs, wfstring, bfv, bottom, name)
     return string
 
 
@@ -159,10 +213,20 @@ def flattentemplate(name, bottom):
         % (bottom, name, name)
     return string
 
+def silencetemplate(name, bottom):
+    string = \
+        'layer {\n\
+        bottom: "%s"\n\
+        name: "%s"\n\
+        type: "Silence"\n\
+        }\n' \
+        % (bottom, name)
+    return string
+
 
 def dropouttemplate(name, bottom, dropout):
     string = \
-    'layer {\n\
+        'layer {\n\
     name: "%s"\n\
     type: "Dropout"\n\
     bottom: "%s"\n\
@@ -172,6 +236,7 @@ def dropouttemplate(name, bottom, dropout):
     }\n\
     }\n' % (name, bottom, name, dropout)
     return string
+
 
 def LRNtemplate(name, bottom, alpha, beta, size, mode):
     string = \
@@ -296,7 +361,7 @@ def accuracytemplate(name, bottom, Testonly):
 def solvertemplate(type, learningrate, testinterval, testruns, maxiter, displayiter, snapshotiter, snapshotname,
                    snapshotpath, configpath, solvername, solver='GPU'):
     snapshotprefix = snapshotpath + snapshotname
-    netpath = configpath + '%s_train_test.prototxt' %solvername
+    netpath = configpath + '%s_train_test.prototxt' % solvername
     if type == 'ADAGRAD':
         tsstring = \
             'lr_policy: "step"\n\
@@ -336,21 +401,28 @@ def solvertemplate(type, learningrate, testinterval, testruns, maxiter, displayi
     solverstring = genericstring + tsstring
     return solverstring
 
-def deploytemplate(batch,channels,size,datain):
-    deploystring =\
-    'name: "Autogen"\n\
+
+def deploytemplate(batch, channels, size, datain):
+    deploystring = \
+        'name: "Autogen"\n\
     input: "%s"\n\
     input_dim: %i\n\
     input_dim: %i\n\
     input_dim: %i\n\
-    input_dim: %i\n' % (datain,batch,channels,size,size)
+    input_dim: %i\n' % (datain, batch, channels, size, size)
     return deploystring
 
-def scripttemplate(caffepath,configpath,solvername,gpu):
+
+def scripttemplate(caffepath, configpath, solvername, gpu,solver):
+    if solver == 'GPU':
+        extrastring = '--gpu=%i' %gpu
+    else:
+        extrastring = ''
     solverstring = configpath + '%s_solver.prototxt' % solvername
     caffestring = caffepath + 'caffe'
-    string = '#!/usr/bin/env sh \n %s train --solver=%s --gpu=%i' %(caffestring,solverstring,gpu)
+    string = '#!/usr/bin/env sh \n %s train --solver=%s %s' % (caffestring, solverstring, extrastring)
     return string
+
 
 class Solve(bpy.types.Operator):
     """Generate Caffe solver"""  # blender will use this as a tooltip for menu items and buttons.
@@ -381,19 +453,32 @@ class Solve(bpy.types.Operator):
                     print ('node %s has input %s' % (nname, bottomnode.name))
                     bottoms.extend([bottom])
             if node.bl_idname == 'DataNodeType':
-                string = datatemplate(node.name, node.batchsize, node.trainpath, node.testpath, node.supervised, node.maxval)
-                dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
+                if node.dbtype == 'LMDB':
+                    string = datatemplate(node.name, node.batchsize, node.trainpath, node.testpath, node.supervised,
+                                          node.dbtype, node.usemeanfile,node.imsize,node.maxval,node.mirror,node.meanfile)
+                    dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
+                elif node.dbtype == "Image files":
+                    string = datatemplate(node.name, node.batchsize, node.trainfile, node.testfile, node.supervised,
+                                          node.dbtype, node.usemeanfile,node.imsize,node.maxval,node.mirror,node.meanfile)
+                    dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
             elif node.bl_idname == 'PoolNodeType':
                 string = pooltemplate(node.name, node.kernel, node.stride, node.mode, bottoms[0])
                 dstring = string
             elif node.bl_idname == 'ConvNodeType':
-                string = convtemplate(node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride, bottoms[0], node.biasfill ,node.filterlr,node.biaslr,node.filterdecay,node.biasdecay,node.std,node.weights)
+                string = convtemplate(node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride, bottoms[0],
+                                      node.biasfill, node.filterlr, node.biaslr, node.filterdecay, node.biasdecay,
+                                      node.std, node.weights)
                 dstring = string
             elif node.bl_idname == 'FCNodeType':
-                string = FCtemplate(node.name, node.outputnum, bottoms[0],node.sparse,node.weights,node.biasfill,node.filterlr,node.biaslr,node.filterdecay,node.biasdecay,node.std,node.sparsity)
+                string = FCtemplate(node.name, node.outputnum, bottoms[0], node.sparse, node.weights, node.biasfill,
+                                    node.filterlr, node.biaslr, node.filterdecay, node.biasdecay, node.std,
+                                    node.sparsity)
                 dstring = string
             elif node.bl_idname == 'FlattenNodeType':
                 string = flattentemplate(node.name, bottoms[0])
+                dstring = string
+            elif node.bl_idname == 'SilenceNodeType':
+                string = silencetemplate(node.name, bottoms[0])
                 dstring = string
             elif node.bl_idname == 'LRNNodeType':
                 string = LRNtemplate(node.name, bottoms[0], node.alpha, node.beta, node.size, node.mode)
@@ -427,10 +512,11 @@ class Solve(bpy.types.Operator):
                 string = ''
                 dstring = ''
             elif node.bl_idname == 'SolverNodeType':
-                solverstring = solvertemplate(node.solver, node.learningrate, node.testinterval, node.testruns, node.maxiter,
-                                        node.displayiter, node.snapshotiter, node.solvername, node.snapshotpath,
-                                        node.configpath,node.solvername,solver=node.compmode)
-                scriptstring = scripttemplate(node.caffexec,node.configpath,node.solvername,node.gpu)
+                solverstring = solvertemplate(node.solver, node.learningrate, node.testinterval, node.testruns,
+                                              node.maxiter,
+                                              node.displayiter, node.snapshotiter, node.solvername, node.snapshotpath,
+                                              node.configpath, node.solvername, solver=node.compmode)
+                scriptstring = scripttemplate(node.caffexec, node.configpath, node.solvername, node.gpu,solver=node.compmode)
                 configpath = node.configpath
                 solvername = node.solvername
             elif string == 0:
@@ -448,33 +534,33 @@ class Solve(bpy.types.Operator):
                 except IndexError:
                     g2bottoms.extend([str(random.random())])
         for juggle in range(30):
-            gtops,gbottoms,g2bottoms,gcode,dcode = self.juggleorder(gtops,gbottoms, g2bottoms,gcode,0,dcode)
-        #for chunk in gcode:
+            gtops, gbottoms, g2bottoms, gcode, dcode = self.juggleorder(gtops, gbottoms, g2bottoms, gcode, 0, dcode)
+            # for chunk in gcode:
             #print (chunk)
-            gtops,gbottoms,g2bottoms,gcode,dcode = self.juggleorder(gtops,gbottoms, g2bottoms,gcode,1,dcode)
+            gtops, gbottoms, g2bottoms, gcode, dcode = self.juggleorder(gtops, gbottoms, g2bottoms, gcode, 1, dcode)
         solution = ''
         for chunk in gcode:
             solution = solution + chunk
         dsolution = ''
         for chunk in dcode:
             dsolution = dsolution + chunk
-        #print (solution)
+        # print (solution)
         os.chdir(configpath)
-        ttfile = open('%s_train_test.prototxt' %solvername,mode='w')
+        ttfile = open('%s_train_test.prototxt' % solvername, mode='w')
         ttfile.write(solution)
         ttfile.close()
-        depfile = open('%s_deploy.prototxt' %solvername,mode='w')
+        depfile = open('%s_deploy.prototxt' % solvername, mode='w')
         depfile.write(dsolution)
         depfile.close()
-        solvefile = open('%s_solver.prototxt' %solvername, mode='w')
+        solvefile = open('%s_solver.prototxt' % solvername, mode='w')
         solvefile.write(solverstring)
         solvefile.close()
-        scriptfile = open('train_%s.sh' %solvername, mode='w')
+        scriptfile = open('train_%s.sh' % solvername, mode='w')
         scriptfile.write(scriptstring)
         scriptfile.close()
         return {'FINISHED'}  # this lets blender know the operator finished successfully.
 
-    def juggleorder(self, names, refs, refs2, code,prefsocket, dcode):
+    def juggleorder(self, names, refs, refs2, code, prefsocket, dcode):
         goodorder = 0
         print (refs)
         print(refs2)
@@ -487,7 +573,7 @@ class Solve(bpy.types.Operator):
                 z = 0
                 # Start of list is data layer
                 # get location of bottom in top
-                #print (name)
+                # print (name)
                 #print (names)
                 loc = names.index(name)
                 try:
@@ -497,7 +583,7 @@ class Solve(bpy.types.Operator):
                     pass
                 try:
                     float(name)
-                    
+
                     print ('passing float')
                     print (name)
                     y = 1
@@ -518,7 +604,7 @@ class Solve(bpy.types.Operator):
                     #time.sleep(10)
                 #ref = 10000000
                 if ref < loc:
-                    names,refs,refs2,code,dcode = self.swap(loc,ref,(names,refs,refs2,code,dcode))
+                    names, refs, refs2, code, dcode = self.swap(loc, ref, (names, refs, refs2, code, dcode))
                     checks[loc] = 0
                 else:
                     checks[loc] = 0
@@ -526,16 +612,15 @@ class Solve(bpy.types.Operator):
             print (refs)
             print (refs2)
             print (checks)
-                # if in wrong order
-        return names,refs,refs2,code,dcode
+            # if in wrong order
+        return names, refs, refs2, code, dcode
 
-    def swap(self,orig,dest,lists):
+    def swap(self, orig, dest, lists):
         for list in lists:
             tmp = list[dest]
             list[dest] = list[orig]
             list[orig] = tmp
         return lists
-
 
 
 def register():

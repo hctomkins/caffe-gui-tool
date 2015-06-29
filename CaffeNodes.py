@@ -285,18 +285,27 @@ class DataNode(Node, MyCustomTreeNode):
     # Icon identifier
     bl_icon = 'SOUND'
     DBs = [
-        ("LMDB", "lmdb", "Lmdb database"),
-    ]
+        ("LMDB", "LMDB", "Lmdb database"), ("Image files","Image files","Image files"),
+]
     # === Custom Properties ===
     # These work just like custom properties in ID data blocks
     # Extensive information can be found under
     # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
-    myEnumProperty = bpy.props.EnumProperty(name="Database type", description="Type of db", items=DBs, default='LMDB')
-    imsize = bpy.props.IntProperty(min=1, default=28, soft_max=250)
+    dbtype = bpy.props.EnumProperty(name="Database type", description="Type of Data", items=DBs, default='LMDB')
+    imsize = bpy.props.IntProperty(name="Image targetsize",min=1, default=28, soft_max=1000)
     channels = bpy.props.IntProperty(min=1, default=3, soft_max=250)
     maxval = bpy.props.IntProperty(min=1, default=255, soft_max=255)
     batchsize = bpy.props.IntProperty(min=1, default=100, soft_max=500)
     supervised = bpy.props.BoolProperty(default=True)
+    mirror = bpy.props.BoolProperty(name='Random Mirror',default=False)
+    usemeanfile = bpy.props.BoolProperty(name='Use mean file',default=True)
+    meanfile = bpy.props.StringProperty \
+        (
+            name="Mean File Path",
+            default="",
+            description="Mean file location",
+            subtype='FILE_PATH'
+        )
     trainpath = bpy.props.StringProperty \
         (
             name="Train Data Path",
@@ -310,6 +319,20 @@ class DataNode(Node, MyCustomTreeNode):
             default="",
             description="Get the path to the data",
             subtype='DIR_PATH'
+        )
+    trainfile = bpy.props.StringProperty \
+        (
+            name="Train image txt",
+            default="",
+            description="Get the path to the data",
+            subtype='FILE_PATH'
+        )
+    testfile = bpy.props.StringProperty \
+        (
+            name="Test image txt",
+            default="",
+            description="Get the path to the data",
+            subtype='FILE_PATH'
         )
     # === Optional Functions ===
     # Initialization function, called when a new node is created.
@@ -330,13 +353,24 @@ class DataNode(Node, MyCustomTreeNode):
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
+        layout.prop(self, "dbtype")
+        if self.dbtype == 'LMDB':
+            layout.prop(self, "trainpath")
+            layout.prop(self, "testpath")
+        elif self.dbtype == 'Image files':
+            layout.prop(self, "trainfile")
+            layout.prop(self, "testfile")
+        else:
+            print(self.dbtype)
         layout.prop(self, "batchsize")
         layout.prop(self, "channels")
         layout.prop(self, "imsize")
         layout.prop(self, "maxval")
-        layout.prop(self, "trainpath")
-        layout.prop(self, "testpath")
         layout.prop(self, "supervised")
+        layout.prop(self, "mirror")
+        layout.prop(self, "usemeanfile")
+        if self.usemeanfile:
+            layout.prop(self,"meanfile")
     # Detail buttons in the sidebar.
     # If this function is not defined, the draw_buttons function is used instead
 
@@ -580,6 +614,47 @@ class FlattenNode(Node, MyCustomTreeNode):
         # Optional: custom label
         # Explicit user label overrides this, but here we can define a label dynamically
 
+class SilenceNode(Node, MyCustomTreeNode):
+    # === Basics ===
+    # Description string
+    '''A Silence node'''
+    # Optional identifier string. If not explicitly defined, the python class name is used.
+    bl_idname = 'SilenceNodeType'
+    # Label for nice name display
+    bl_label = 'Silence Node'
+    # Icon identifier
+    bl_icon = 'SOUND'
+
+    # === Custom Properties ===
+    # These work just like custom properties in ID data blocks
+    # Extensive information can be found under
+    # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
+    # === Optional Functions ===
+    # Initialization function, called when a new node is created.
+    # This is the most common place to create the sockets for a node, as shown below.
+    # NOTE: this is not the same as the standard __init__ function in Python, which is
+    # a purely internal Python method and unknown to the node system!
+    def init(self, context):
+        self.inputs.new('ImageSocketType', "Input")
+
+
+    # Copy function to initialize a copied node from an existing one.
+    def copy(self, node):
+        print("Copying from node ", node)
+
+    # Free function to clean up on removal.
+    def free(self):
+        print("Removing node ", self, ", Goodbye!")
+
+    # Additional buttons displayed on the node.
+    def draw_buttons(self, context, layout):
+        layout.label("Silence")
+        # Detail buttons in the sidebar.
+        # If this function is not defined, the draw_buttons function is used instead
+
+        # Optional: custom label
+        # Explicit user label overrides this, but here we can define a label dynamically
+
 
 class LRNNode(Node, MyCustomTreeNode):
     # === Basics ===
@@ -645,14 +720,14 @@ class ActivationNode(Node, MyCustomTreeNode):
     # Icon identifier
     bl_icon = 'SOUND'
     modes = [
-        ("SIGMOID", "SIGMOID", "Sigmoid"),
-        ("TANH", "TANH", "TanH"),
+        ('"Sigmoid"', "Sigmoid", "Sigmoid"),
+        ('"TanH"', "TanH", "TanH"),
     ]
     # === Custom Properties ===
     # These work just like custom properties in ID data blocks
     # Extensive information can be found under
     # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
-    mode = bpy.props.EnumProperty(name="Mode", default='SIGMOID', items=modes)
+    mode = bpy.props.EnumProperty(name="Mode", default='"Sigmoid"', items=modes)
     # === Optional Functions ===
     # Initialization function, called when a new node is created.
     # This is the most common place to create the sockets for a node, as shown below.
@@ -1140,6 +1215,10 @@ node_categories = [
         # our basic node
         NodeItem("DataNodeType")
     ]),
+    MyNodeCategory("MNODES", "Misc Nodes", items=[
+        # our basic node
+        NodeItem("SilenceNodeType")
+    ]),
 ]
 
 
@@ -1165,6 +1244,7 @@ def register():
     bpy.utils.register_class(LossSocket)
     bpy.utils.register_class(AFlatSocket)
     bpy.utils.register_class(NAFlatSocket)
+    bpy.utils.register_class(SilenceNode)
 
     nodeitems_utils.register_node_categories("CUSTOM_NODES", node_categories)
 
