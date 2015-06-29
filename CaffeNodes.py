@@ -21,6 +21,7 @@ def calcsize(self, context):
     poolsizes = []
     offsets = []
     fcsizes = []
+    reversals = []
     passes = []
     while 1 == 1:
         if node.bl_idname == "ConvNodeType":
@@ -35,6 +36,21 @@ def calcsize(self, context):
             offsets.extend([0])
             fcsizes.extend([0])
             passes.extend([0])
+            reversals.extend([1])
+            node = node.inputs[0].links[0].from_node
+        if node.bl_idname == "DeConvNodeType":
+            #print (node.inputs[0])
+            #print(dir(node.inputs[0]))
+            #print(type(node.inputs[0]))
+            kernelsizes.extend([-node.kernelsize])
+            strides.extend([1.0/node.Stride])
+            paddings.extend([-node.Padding])
+            poolsizes.extend([1])
+            poolstrides.extend([1])
+            offsets.extend([0])
+            fcsizes.extend([0])
+            passes.extend([0])
+            reversals.extend([-1])
             node = node.inputs[0].links[0].from_node
         elif node.bl_idname == "FCNodeType":
             #print (node.inputs[0])
@@ -47,6 +63,7 @@ def calcsize(self, context):
             poolstrides.extend([0])
             offsets.extend([0])
             passes.extend([0])
+            reversals.extend([1])
             fcsizes.extend([node.outputnum])
             node = node.inputs[0].links[0].from_node
 
@@ -57,6 +74,7 @@ def calcsize(self, context):
             strides.extend([1])
             fcsizes.extend([0])
             passes.extend([0])
+            reversals.extend([1])
             poolsizes.extend([node.kernel])
             poolstrides.extend([node.stride])
             offsets.extend([1])
@@ -74,10 +92,11 @@ def calcsize(self, context):
                 offset = offsets[node]
                 poolstride = poolstrides[node]
                 poolsize = poolsizes[node]
+                reversal = reversals[node]
                 if passes[node] == 0:
                     if fcsizes[node] == 0:
                         #########################
-                        x = ((x + (2 * padding) - ksize) / stride + 1 - offset)
+                        x = ((x + (2 * padding) - ksize) / stride + 1*reversal - offset)
                         x = (x - poolsize) / poolstride + 1
                         ###################
                     else:
@@ -90,6 +109,7 @@ def calcsize(self, context):
             poolsizes.extend([0])
             poolstrides.extend([0])
             offsets.extend([0])
+            reversals.extend([1])
             fcsizes.extend([0])
             passes.extend([1])
             node = node.inputs[0].links[0].from_node
@@ -450,6 +470,75 @@ class ConvNode(Node, MyCustomTreeNode):
     bl_idname = 'ConvNodeType'
     # Label for nice name display
     bl_label = 'Convolution Node'
+    # Icon identifier
+    bl_icon = 'SOUND'
+
+    # === Custom Properties ===
+    # These work just like custom properties in ID data blocks
+    # Extensive information can be found under
+    # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
+    modes = [
+        ("xavier", "xavier", "Xavier dist"),
+        ("gaussian", "gaussian", "Gaussian dist"),
+    ]
+    weights = bpy.props.EnumProperty(name='Weights', default='gaussian', items=modes)
+    kernelsize = bpy.props.IntProperty(default=5, min=0, soft_max=25)
+    Stride = bpy.props.IntProperty(default=1, min=1, soft_max=5)
+    Padding = bpy.props.IntProperty(default=0, min=0, soft_max=5)
+    OutputLs = bpy.props.IntProperty(default=20, min=1, soft_max=300)
+    std = bpy.props.FloatProperty(default=0.01,soft_max=0.1,min=0)
+    filterlr = bpy.props.IntProperty(default=1, max=5, min=0)
+    biaslr = bpy.props.IntProperty(default=2, max=5, min=0)
+    filterdecay = bpy.props.IntProperty(default=1, max=5, min=0)
+    biasdecay = bpy.props.IntProperty(default=0, max=5, min=0)
+    biasfill = bpy.props.FloatProperty(default=0.4, soft_max=1.0, min=0)
+    # === Optional Functions ===
+    # Initialization function, called when a new node is created.
+    # This is the most common place to create the sockets for a node, as shown below.
+    # NOTE: this is not the same as the standard __init__ function in Python, which is
+    # a purely internal Python method and unknown to the node system!
+    def init(self, context):
+        self.inputs.new('ImageSocketType', "Input image")
+        self.outputs.new('ImageSocketType', "Output image")
+
+
+    # Copy function to initialize a copied node from an existing one.
+    def copy(self, node):
+        print("Copying from node ", node)
+
+    # Free function to clean up on removal.
+    def free(self):
+        print("Removing node ", self, ", Goodbye!")
+
+    # Additional buttons displayed on the node.
+    def draw_buttons(self, context, layout):
+        layout.label("image output is %s pixels" % calcsize(self, context))
+        layout.prop(self, "kernelsize")
+        layout.prop(self, "Stride")
+        layout.prop(self, "Padding")
+        layout.prop(self, "OutputLs")
+        layout.prop(self, "filterlr")
+        layout.prop(self, "biaslr")
+        layout.prop(self, "filterdecay")
+        layout.prop(self, "biasdecay")
+        layout.prop(self, "weights")
+        layout.prop(self, "std")
+        layout.prop(self, "biasfill")
+        # Detail buttons in the sidebar.
+        # If this function is not defined, the draw_buttons function is used instead
+
+        # Optional: custom label
+        # Explicit user label overrides this, but here we can define a label dynamically
+
+
+class DeConvNode(Node, MyCustomTreeNode):
+    # === Basics ===
+    # Description string
+    '''A DeConvolution node'''
+    # Optional identifier string. If not explicitly defined, the python class name is used.
+    bl_idname = 'DeConvNodeType'
+    # Label for nice name display
+    bl_label = 'DeConvolution Node'
     # Icon identifier
     bl_icon = 'SOUND'
 
@@ -1108,6 +1197,8 @@ class SolverNode(Node, MyCustomTreeNode):
     solvername = bpy.props.StringProperty()
     solver = bpy.props.EnumProperty(name="Mode", default='SGD', items=modes)
     compmode = bpy.props.EnumProperty(name="Compute Mode", default='GPU', items=computemodes)
+    accum = bpy.props.BoolProperty(name='Accumulate Gradients',default=True)
+    accumiters = bpy.props.IntProperty(name='Number of minibatches to Accumulate',default=1 ,min=1,soft_max=10)
     gpu = bpy.props.IntProperty(default=0 , soft_max=1)
     testinterval = bpy.props.IntProperty(default=500, min=1, soft_max=2000)
     testruns = bpy.props.IntProperty(default=50, min=1, soft_max=200)
@@ -1164,6 +1255,9 @@ class SolverNode(Node, MyCustomTreeNode):
         layout.prop(self, "solvername")
         layout.prop(self, "solver")
         layout.prop(self, "compmode")
+        layout.prop(self, "accum")
+        if self.accum:
+            layout.prop(self,"accumiters")
         layout.prop(self, "gpu")
         layout.prop(self, "testinterval")
         layout.prop(self, "testruns")
@@ -1202,6 +1296,7 @@ node_categories = [
         # our basic node
         NodeItem("PoolNodeType"),
         NodeItem("ConvNodeType"),
+        NodeItem("DeConvNodeType"),
         NodeItem("LRNNodeType"),
         NodeItem("ConcatNodeType")
     ]),
@@ -1238,6 +1333,7 @@ def register():
     bpy.utils.register_class(DropoutNode)
     bpy.utils.register_class(PoolNode)
     bpy.utils.register_class(ConvNode)
+    bpy.utils.register_class(DeConvNode)
     bpy.utils.register_class(FCNode)
     bpy.utils.register_class(FlattenNode)
     bpy.utils.register_class(LRNNode)

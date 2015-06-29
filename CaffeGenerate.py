@@ -46,6 +46,41 @@ def convtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr, 
     return string
 
 
+def deconvtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr, blr, fdr, bdr, std, weight_filler):
+    string = \
+        'layer {\n\
+        name: "%s"\n\
+        type: "Deconvolution"\n\
+        param {\n\
+        lr_mult: %i\n\
+        decay_mult: %i\n\
+        }\n\
+        param {\n\
+        lr_mult: %i\n\
+        decay_mult: %i\n\
+        }\n\
+        convolution_param {\n\
+        num_output: %i\n\
+        pad: %i\n\
+        kernel_size: %i\n\
+        stride: %i\n\
+        weight_filler {\n\
+        type: "%s"\n\
+        std: %f\n\
+        }\n\
+        bias_filler {\n\
+        type: "constant"\n\
+        value: %f\n\
+        }\n\
+        }\n\
+        bottom: "%s"\n\
+        top: "%s"\n\
+        }\n' \
+        % (name, flr, fdr, blr, bdr, OutputLs, Padding, kernelsize, Stride, weight_filler, std, bfv, bottom, name)
+    tb = [name, bottom]
+    return string
+
+
 def datatemplate(name, batchsize, trainpath, testpath, supervised, dbtype, meanused, imsize, maxval=255, mirror=0, meanfile=0,silout=0):
     sf = 1.0 / (maxval + 1)
     try:
@@ -223,6 +258,7 @@ def flattentemplate(name, bottom):
         % (bottom, name, name)
     return string
 
+
 def silencetemplate(name, bottom):
     string = \
         'layer {\n\
@@ -369,7 +405,7 @@ def accuracytemplate(name, bottom, Testonly):
 
 
 def solvertemplate(type, learningrate, testinterval, testruns, maxiter, displayiter, snapshotiter, snapshotname,
-                   snapshotpath, configpath, solvername, solver='GPU'):
+                   snapshotpath, configpath, solvername, itersize, solver='GPU'):
     snapshotprefix = snapshotpath + snapshotname
     netpath = configpath + '%s_train_test.prototxt' % solvername
     if type == 'ADAGRAD':
@@ -404,10 +440,11 @@ def solvertemplate(type, learningrate, testinterval, testruns, maxiter, displayi
         base_lr: %f\n\
         display: %i\n\
         max_iter: %i\n\
+        iter_size: %i\n\
         snapshot: %i\n\
         snapshot_prefix: "%s"\n\
         solver_mode: %s\n' \
-        % (netpath, testruns, testinterval, learningrate, displayiter, maxiter, snapshotiter, snapshotprefix, solver)
+        % (netpath, testruns, testinterval, learningrate, displayiter, maxiter,itersize, snapshotiter, snapshotprefix, solver)
     solverstring = genericstring + tsstring
     return solverstring
 
@@ -479,6 +516,11 @@ class Solve(bpy.types.Operator):
                                       node.biasfill, node.filterlr, node.biaslr, node.filterdecay, node.biasdecay,
                                       node.std, node.weights)
                 dstring = string
+            elif node.bl_idname == 'DeConvNodeType':
+                string = deconvtemplate(node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride, bottoms[0],
+                                      node.biasfill, node.filterlr, node.biaslr, node.filterdecay, node.biasdecay,
+                                      node.std, node.weights)
+                dstring = string
             elif node.bl_idname == 'FCNodeType':
                 string = FCtemplate(node.name, node.outputnum, bottoms[0], node.sparse, node.weights, node.biasfill,
                                     node.filterlr, node.biaslr, node.filterdecay, node.biasdecay, node.std,
@@ -525,7 +567,7 @@ class Solve(bpy.types.Operator):
                 solverstring = solvertemplate(node.solver, node.learningrate, node.testinterval, node.testruns,
                                               node.maxiter,
                                               node.displayiter, node.snapshotiter, node.solvername, node.snapshotpath,
-                                              node.configpath, node.solvername, solver=node.compmode)
+                                              node.configpath, node.solvername, node.accumiters,solver=node.compmode)
                 scriptstring = scripttemplate(node.caffexec, node.configpath, node.solvername, node.gpu,solver=node.compmode)
                 configpath = node.configpath
                 solvername = node.solvername
