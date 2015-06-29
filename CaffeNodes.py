@@ -298,6 +298,7 @@ class DataNode(Node, MyCustomTreeNode):
     batchsize = bpy.props.IntProperty(min=1, default=100, soft_max=500)
     supervised = bpy.props.BoolProperty(default=True)
     mirror = bpy.props.BoolProperty(name='Random Mirror',default=False)
+    silout = bpy.props.BoolProperty(name='Silence label (sil. node doesnt work on labels)',default=False)
     usemeanfile = bpy.props.BoolProperty(name='Use mean file',default=True)
     meanfile = bpy.props.StringProperty \
         (
@@ -357,7 +358,11 @@ class DataNode(Node, MyCustomTreeNode):
         if self.dbtype == 'LMDB':
             layout.prop(self, "trainpath")
             layout.prop(self, "testpath")
+            layout.prop(self, "supervised")
         elif self.dbtype == 'Image files':
+            if self.supervised == 0:
+                layout.label("WARNING: Check the supervised box",icon='ERROR')
+                layout.prop(self,"supervised")
             layout.prop(self, "trainfile")
             layout.prop(self, "testfile")
         else:
@@ -366,8 +371,12 @@ class DataNode(Node, MyCustomTreeNode):
         layout.prop(self, "channels")
         layout.prop(self, "imsize")
         layout.prop(self, "maxval")
-        layout.prop(self, "supervised")
         layout.prop(self, "mirror")
+        if self.supervised:
+            layout.prop(self, "silout")
+        elif self.supervised ==0 and self.silout ==1 and self.dbtype=='LMDB':
+            layout.label("WARNING: Uncheck the silence box",icon='ERROR')
+            layout.prop(self,"silout")
         layout.prop(self, "usemeanfile")
         if self.usemeanfile:
             layout.prop(self,"meanfile")
@@ -613,6 +622,7 @@ class FlattenNode(Node, MyCustomTreeNode):
 
         # Optional: custom label
         # Explicit user label overrides this, but here we can define a label dynamically
+
 
 class SilenceNode(Node, MyCustomTreeNode):
     # === Basics ===

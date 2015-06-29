@@ -46,21 +46,30 @@ def convtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr, 
     return string
 
 
-def datatemplate(name, batchsize, trainpath, testpath, supervised, dbtype, meanused, imsize, maxval=255, mirror=0, meanfile=0):
+def datatemplate(name, batchsize, trainpath, testpath, supervised, dbtype, meanused, imsize, maxval=255, mirror=0, meanfile=0,silout=0):
     sf = 1.0 / (maxval + 1)
     try:
         extralabel = str(int(name[-1]))
     except ValueError:
         extralabel =''
-
-    if meanused != 0:
-        meanstring = 'mean_file: "%s"' % meanfile
-    else:
-        meanstring = ''
     if supervised == 0:
         lstring = ''
     else:
         lstring = 'top: "label%s"' %extralabel
+    if silout and supervised:
+        silencestring =\
+        'layer {\n\
+        bottom: "label%s"\n\
+        name: "%s"\n\
+        type: "Silence"\n\
+        }\n'\
+        %(extralabel,name+'silence')
+    else:
+        silencestring = ''
+    if meanused != 0:
+        meanstring = 'mean_file: "%s"' % meanfile
+    else:
+        meanstring = ''
     if dbtype == 'LMDB':
         typestring = 'Data'
         paramstring = \
@@ -138,8 +147,9 @@ def datatemplate(name, batchsize, trainpath, testpath, supervised, dbtype, meanu
         include {\n\
         phase: TEST \n\
         }\n\
-        }\n' \
-        % (name, typestring, name, lstring, paramstring, name, typestring, name, lstring, testparamstring)
+        }\n\
+        %s\n' \
+        % (name, typestring, name, lstring, paramstring, name, typestring, name, lstring, testparamstring,silencestring)
     return string
 
 
@@ -455,11 +465,11 @@ class Solve(bpy.types.Operator):
             if node.bl_idname == 'DataNodeType':
                 if node.dbtype == 'LMDB':
                     string = datatemplate(node.name, node.batchsize, node.trainpath, node.testpath, node.supervised,
-                                          node.dbtype, node.usemeanfile,node.imsize,node.maxval,node.mirror,node.meanfile)
+                                          node.dbtype, node.usemeanfile,node.imsize,node.maxval,node.mirror,node.meanfile,node.silout)
                     dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
                 elif node.dbtype == "Image files":
                     string = datatemplate(node.name, node.batchsize, node.trainfile, node.testfile, node.supervised,
-                                          node.dbtype, node.usemeanfile,node.imsize,node.maxval,node.mirror,node.meanfile)
+                                          node.dbtype, node.usemeanfile,node.imsize,node.maxval,node.mirror,node.meanfile,node.silout)
                     dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
             elif node.bl_idname == 'PoolNodeType':
                 string = pooltemplate(node.name, node.kernel, node.stride, node.mode, bottoms[0])
