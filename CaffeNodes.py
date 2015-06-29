@@ -36,21 +36,21 @@ def calcsize(self, context):
             offsets.extend([0])
             fcsizes.extend([0])
             passes.extend([0])
-            reversals.extend([1])
+            reversals.extend([0])
             node = node.inputs[0].links[0].from_node
         if node.bl_idname == "DeConvNodeType":
             #print (node.inputs[0])
             #print(dir(node.inputs[0]))
             #print(type(node.inputs[0]))
-            kernelsizes.extend([-node.kernelsize])
-            strides.extend([1.0/node.Stride])
-            paddings.extend([-node.Padding])
+            kernelsizes.extend([node.kernelsize])
+            strides.extend([node.Stride])
+            paddings.extend([node.Padding])
             poolsizes.extend([1])
             poolstrides.extend([1])
             offsets.extend([0])
             fcsizes.extend([0])
             passes.extend([0])
-            reversals.extend([-1])
+            reversals.extend([1])
             node = node.inputs[0].links[0].from_node
         elif node.bl_idname == "FCNodeType":
             #print (node.inputs[0])
@@ -63,7 +63,7 @@ def calcsize(self, context):
             poolstrides.extend([0])
             offsets.extend([0])
             passes.extend([0])
-            reversals.extend([1])
+            reversals.extend([0])
             fcsizes.extend([node.outputnum])
             node = node.inputs[0].links[0].from_node
 
@@ -74,7 +74,7 @@ def calcsize(self, context):
             strides.extend([1])
             fcsizes.extend([0])
             passes.extend([0])
-            reversals.extend([1])
+            reversals.extend([0])
             poolsizes.extend([node.kernel])
             poolstrides.extend([node.stride])
             offsets.extend([1])
@@ -95,10 +95,13 @@ def calcsize(self, context):
                 reversal = reversals[node]
                 if passes[node] == 0:
                     if fcsizes[node] == 0:
-                        #########################
-                        x = ((x + (2 * padding) - ksize) / stride + 1*reversal - offset)
-                        x = (x - poolsize) / poolstride + 1
-                        ###################
+                        if reversal ==0:
+                            #########################
+                            x = ((x + (2 * padding) - ksize) / stride + 1 - offset)
+                            x = (x - poolsize) / poolstride + 1
+                            ###################
+                        else:
+                            x = (x*stride - stride) + ksize - 2*padding
                     else:
                         x = fcsizes[node]
             break
@@ -109,7 +112,7 @@ def calcsize(self, context):
             poolsizes.extend([0])
             poolstrides.extend([0])
             offsets.extend([0])
-            reversals.extend([1])
+            reversals.extend([0])
             fcsizes.extend([0])
             passes.extend([1])
             node = node.inputs[0].links[0].from_node
