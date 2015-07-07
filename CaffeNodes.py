@@ -120,13 +120,13 @@ def calcsize(self, context):
 
 
 # Derived from the NodeTree base type, similar to Menu, Operator, Panel, etc.
-class MyCustomTree(NodeTree):
+class CaffeTree(NodeTree):
     # Description string
     '''A custom node tree type that will show up in the node editor header'''
     # Optional identifier string. If not explicitly defined, the python class name is used.
-    bl_idname = 'CustomTreeType'
+    bl_idname = 'CaffeTreeType'
     # Label for nice name display
-    bl_label = 'Custom Node Tree'
+    bl_label = 'Caffe Node Tree'
     # Icon identifier
     # NOTE: If no icon is defined, the node tree will not show up in the editor header!
     # This can be used to make additional tree types for groups and similar nodes (see below)
@@ -232,72 +232,13 @@ class AFlatSocket(NodeSocket):
 
 # Mix-in class for all custom nodes in this tree type.
 # Defines a poll function to enable instantiation.
-class MyCustomTreeNode:
+class CaffeTreeNode:
     @classmethod
     def poll(cls, ntree):
         return ntree.bl_idname == 'CustomTreeType'
 
 
-# Derived from the Node base type.
-class MyCustomNode(Node, MyCustomTreeNode):
-    # === Basics ===
-    # Description string
-    '''A custom node'''
-    # Optional identifier string. If not explicitly defined, the python class name is used.
-    bl_idname = 'CustomNodeType'
-    # Label for nice name display
-    bl_label = 'Custom Node'
-    # Icon identifier
-    bl_icon = 'SOUND'
-
-    # === Custom Properties ===
-    # These work just like custom properties in ID data blocks
-    # Extensive information can be found under
-    # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
-    myStringProperty = bpy.props.StringProperty()
-    myFloatProperty = bpy.props.FloatProperty(default=3.1415926)
-
-    # === Optional Functions ===
-    # Initialization function, called when a new node is created.
-    # This is the most common place to create the sockets for a node, as shown below.
-    # NOTE: this is not the same as the standard __init__ function in Python, which is
-    # a purely internal Python method and unknown to the node system!
-    def init(self, context):
-        self.inputs.new('CustomSocketType', "Hello")
-        self.inputs.new('NodeSocketFloat', "World")
-        self.inputs.new('NodeSocketVector', "!")
-
-        self.outputs.new('NodeSocketColor', "How")
-        self.outputs.new('NodeSocketColor', "are")
-        self.outputs.new('NodeSocketFloat', "you")
-
-    # Copy function to initialize a copied node from an existing one.
-    def copy(self, node):
-        print("Copying from node ", node)
-
-    # Free function to clean up on removal.
-    def free(self):
-        print("Removing node ", self, ", Goodbye!")
-
-    # Additional buttons displayed on the node.
-    def draw_buttons(self, context, layout):
-        layout.label("Node settings")
-        layout.prop(self, "myFloatProperty")
-
-    # Detail buttons in the sidebar.
-    # If this function is not defined, the draw_buttons function is used instead
-    def draw_buttons_ext(self, context, layout):
-        layout.prop(self, "myFloatProperty")
-        # myStringProperty button will only be visible in the sidebar
-        layout.prop(self, "myStringProperty")
-
-    # Optional: custom label
-    # Explicit user label overrides this, but here we can define a label dynamically
-    def draw_label(self):
-        return "I am a custom node"
-
-
-class DataNode(Node, MyCustomTreeNode):
+class DataNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
     '''A data node'''
@@ -412,7 +353,7 @@ class DataNode(Node, MyCustomTreeNode):
         return "Data Node"
 
 
-class PoolNode(Node, MyCustomTreeNode):
+class PoolNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
     '''A Convolution node'''
@@ -465,7 +406,7 @@ class PoolNode(Node, MyCustomTreeNode):
         # Explicit user label overrides this, but here we can define a label dynamically
 
 
-class ConvNode(Node, MyCustomTreeNode):
+class ConvNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
     '''A Convolution node'''
@@ -534,7 +475,7 @@ class ConvNode(Node, MyCustomTreeNode):
         # Explicit user label overrides this, but here we can define a label dynamically
 
 
-class DeConvNode(Node, MyCustomTreeNode):
+class DeConvNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
     '''A DeConvolution node'''
@@ -603,7 +544,7 @@ class DeConvNode(Node, MyCustomTreeNode):
         # Explicit user label overrides this, but here we can define a label dynamically
 
 
-class FCNode(Node, MyCustomTreeNode):
+class FCNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
     '''A Convolution node'''
@@ -673,7 +614,7 @@ class FCNode(Node, MyCustomTreeNode):
         # Explicit user label overrides this, but here we can define a label dynamically
 
 
-class FlattenNode(Node, MyCustomTreeNode):
+class FlattenNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
     '''A Convolution node'''
@@ -716,7 +657,7 @@ class FlattenNode(Node, MyCustomTreeNode):
         # Explicit user label overrides this, but here we can define a label dynamically
 
 
-class SilenceNode(Node, MyCustomTreeNode):
+class SilenceNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
     '''A Silence node'''
@@ -758,7 +699,7 @@ class SilenceNode(Node, MyCustomTreeNode):
         # Explicit user label overrides this, but here we can define a label dynamically
 
 
-class LRNNode(Node, MyCustomTreeNode):
+class LRNNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
     '''A Convolution node'''
@@ -811,7 +752,7 @@ class LRNNode(Node, MyCustomTreeNode):
         # Explicit user label overrides this, but here we can define a label dynamically
 
 
-class ActivationNode(Node, MyCustomTreeNode):
+class ActivationNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
     '''A Convolution node'''
@@ -858,7 +799,7 @@ class ActivationNode(Node, MyCustomTreeNode):
         # Explicit user label overrides this, but here we can define a label dynamically
 
 
-class ReLuNode(Node, MyCustomTreeNode):
+class ReLuNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
     '''A Convolution node'''
@@ -902,7 +843,7 @@ class ReLuNode(Node, MyCustomTreeNode):
         # Explicit user label overrides this, but here we can define a label dynamically
 
 
-class SMLossNode(Node, MyCustomTreeNode):
+class SMLossNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
     '''A Convolution node'''
@@ -947,7 +888,7 @@ class SMLossNode(Node, MyCustomTreeNode):
         # Explicit user label overrides this, but here we can define a label dynamically
 
 
-class SCELossNode(Node, MyCustomTreeNode):
+class SCELossNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
     '''A Convolution node'''
@@ -992,7 +933,7 @@ class SCELossNode(Node, MyCustomTreeNode):
         # Explicit user label overrides this, but here we can define a label dynamically
 
 
-class EULossNode(Node, MyCustomTreeNode):
+class EULossNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
     '''A Convolution node'''
@@ -1037,7 +978,7 @@ class EULossNode(Node, MyCustomTreeNode):
         # Explicit user label overrides this, but here we can define a label dynamically
 
 
-class DropoutNode(Node, MyCustomTreeNode):
+class DropoutNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
     '''A Convolution node'''
@@ -1082,7 +1023,7 @@ class DropoutNode(Node, MyCustomTreeNode):
         # Explicit user label overrides this, but here we can define a label dynamically
 
 
-class ConcatNode(Node, MyCustomTreeNode):
+class ConcatNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
     '''A Convolution node'''
@@ -1128,7 +1069,7 @@ class ConcatNode(Node, MyCustomTreeNode):
         # Explicit user label overrides this, but here we can define a label dynamically
 
 
-class AccuracyNode(Node, MyCustomTreeNode):
+class AccuracyNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
     '''A Convolution node'''
@@ -1174,7 +1115,7 @@ class AccuracyNode(Node, MyCustomTreeNode):
         # Explicit user label overrides this, but here we can define a label dynamically
 
 
-class SolverNode(Node, MyCustomTreeNode):
+class SolverNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
     '''A Convolution node'''
@@ -1331,7 +1272,7 @@ node_categories = [
 
 
 def register():
-    bpy.utils.register_class(MyCustomTree)
+    bpy.utils.register_class(CaffeTree)
     bpy.utils.register_class(DataNode)
     bpy.utils.register_class(DropoutNode)
     bpy.utils.register_class(PoolNode)
@@ -1361,9 +1302,8 @@ def register():
 def unregister():
     nodeitems_utils.unregister_node_categories("CUSTOM_NODES")
 
-    bpy.utils.unregister_class(MyCustomTree)
-    bpy.utils.unregister_class(MyCustomSocket)
-    bpy.utils.unregister_class(MyCustomNode)
+    bpy.utils.unregister_class(CaffeTree)
+    bpy.utils.unregister_class(CaffeNode)
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ bl_info = {
 
 import bpy
 import random
-import numpy as np
+#import numpy as np
 import time
 import os
 
@@ -616,9 +616,10 @@ class Solve(bpy.types.Operator):
         goodorder = 0
         print (refs)
         print(refs2)
-        checks = np.ones((len(names)))
-        while np.sum(checks) > 0:
-
+        #checks = np.ones((len(names)))
+        checks = [0] * len(names)
+        #while np.sum(checks) > 0:
+        while sum(checks) > 0:
             for name in names:
                 x = 0
                 y = 0
