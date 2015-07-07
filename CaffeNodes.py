@@ -124,7 +124,7 @@ class CaffeTree(NodeTree):
     # Description string
     '''A custom node tree type that will show up in the node editor header'''
     # Optional identifier string. If not explicitly defined, the python class name is used.
-    bl_idname = 'CaffeTreeType'
+    bl_idname = 'CaffeNodeTree'
     # Label for nice name display
     bl_label = 'Caffe Node Tree'
     # Icon identifier
@@ -235,7 +235,7 @@ class AFlatSocket(NodeSocket):
 class CaffeTreeNode:
     @classmethod
     def poll(cls, ntree):
-        return ntree.bl_idname == 'CustomTreeType'
+        return ntree.bl_idname == 'CaffeNodeTree'
 
 
 class DataNode(Node, CaffeTreeNode):
@@ -1228,15 +1228,15 @@ from nodeitems_utils import NodeCategory, NodeItem
 
 # our own base class with an appropriate poll function,
 # so the categories only show up in our own tree type
-class MyNodeCategory(NodeCategory):
+class CaffeNodeCategory(NodeCategory):
     @classmethod
     def poll(cls, context):
-        return context.space_data.tree_type == 'CustomTreeType'
+        return context.space_data.tree_type == 'CaffeNodeTree'
 
 # all categories in a list
 node_categories = [
     # identifier, label, items list
-    MyNodeCategory("PNODES", "Processing Nodes", items=[
+    CaffeNodeCategory("PNODES", "Processing Nodes", items=[
         # our basic node
         NodeItem("PoolNodeType"),
         NodeItem("ConvNodeType"),
@@ -1244,7 +1244,7 @@ node_categories = [
         NodeItem("LRNNodeType"),
         NodeItem("ConcatNodeType")
     ]),
-    MyNodeCategory("NNODES", "Neuron Nodes", items=[
+    CaffeNodeCategory("NNODES", "Neuron Nodes", items=[
         # our basic node
         NodeItem("FCNodeType"),
         NodeItem("FlattenNodeType"),
@@ -1252,7 +1252,7 @@ node_categories = [
         NodeItem("ReluNodeType"),
         NodeItem("DropoutNodeType")
     ]),
-    MyNodeCategory("SNODES", "Solver Nodes", items=[
+    CaffeNodeCategory("SNODES", "Solver Nodes", items=[
         # our basic node
         NodeItem("SolverNodeType"),
         NodeItem("AccuracyNodeType"),
@@ -1260,11 +1260,11 @@ node_categories = [
         NodeItem("SCELossNodeType"),
         NodeItem("SMLossNodeType")
     ]),
-    MyNodeCategory("DNODES", "Data Nodes", items=[
+    CaffeNodeCategory("DNODES", "Data Nodes", items=[
         # our basic node
         NodeItem("DataNodeType")
     ]),
-    MyNodeCategory("MNODES", "Misc Nodes", items=[
+    CaffeNodeCategory("MNODES", "Misc Nodes", items=[
         # our basic node
         NodeItem("SilenceNodeType")
     ]),
