@@ -3,10 +3,14 @@ bl_info = {
     "category": "Object",
 }
 import bpy
+import subprocess
 from bpy.types import NodeTree, Node, NodeSocket
 
 # Implementation of custom nodes from Python
 def calcsize(self, context):
+    '''NOTE - this function works out the dimensions of an image by the time it has reached a certain layer.
+    It traverses all the layers, builds up several lists about the properties of each layer, then computes the
+    size up to a given layer.'''
     x = 0.0
     node = self
     # print (node.bl_idname)
@@ -14,6 +18,7 @@ def calcsize(self, context):
         node.inputs[0].links[0].from_node
     except IndexError:
         return 0
+    #These are the lists to be populated
     kernelsizes = []
     strides = []
     paddings = []
@@ -80,6 +85,7 @@ def calcsize(self, context):
             offsets.extend([1])
             node = node.inputs[0].links[0].from_node
         elif node.bl_idname == "DataNodeType":
+            # When the data node is reached, we must be at the back of the nodetree, so start to work forwards
             x = float(node.imsize)
             # work forwards
             numofnodes = len(passes)
@@ -118,6 +124,21 @@ def calcsize(self, context):
             node = node.inputs[0].links[0].from_node
     return str(round(x, 2))
 
+############################## Function for determining number of gpus
+def getgpus():
+    command = ['nvidia-smi','-L']
+    try:
+        proc = subprocess.Popen(command, bufsize=1,stdout=subprocess.PIPE, stderr=subprocess.STDOUT,universal_newlines=True)
+    except OSError:
+        return 'Error'
+    lines = []
+    while proc.poll() is None: # while alive
+        line = proc.stdout.readline()
+        if line:
+            # Process output here
+            lines.extend([line])
+    return len(lines)
+##################################
 
 # Derived from the NodeTree base type, similar to Menu, Operator, Panel, etc.
 class CaffeTree(NodeTree):
@@ -127,10 +148,6 @@ class CaffeTree(NodeTree):
     bl_idname = 'CaffeNodeTree'
     # Label for nice name display
     bl_label = 'Caffe Node Tree'
-    # Icon identifier
-    # NOTE: If no icon is defined, the node tree will not show up in the editor header!
-    # This can be used to make additional tree types for groups and similar nodes (see below)
-    #       Only one base tree class is needed in the editor for selecting the general category
     bl_icon = 'NODETREE'
 
 
@@ -230,8 +247,6 @@ class AFlatSocket(NodeSocket):
         return (0.0, 0.8, 0.8, 0.5)
 
 
-# Mix-in class for all custom nodes in this tree type.
-# Defines a poll function to enable instantiation.
 class CaffeTreeNode:
     @classmethod
     def poll(cls, ntree):
@@ -252,9 +267,6 @@ class DataNode(Node, CaffeTreeNode):
         ("LMDB", "LMDB", "Lmdb database"), ("Image files","Image files","Image files"),
 ]
     # === Custom Properties ===
-    # These work just like custom properties in ID data blocks
-    # Extensive information can be found under
-    # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
     dbtype = bpy.props.EnumProperty(name="Database type", description="Type of Data", items=DBs, default='LMDB')
     imsize = bpy.props.IntProperty(name="Image targetsize",min=1, default=28, soft_max=1000)
     channels = bpy.props.IntProperty(min=1, default=3, soft_max=250)
@@ -300,10 +312,6 @@ class DataNode(Node, CaffeTreeNode):
             subtype='FILE_PATH'
         )
     # === Optional Functions ===
-    # Initialization function, called when a new node is created.
-    # This is the most common place to create the sockets for a node, as shown below.
-    # NOTE: this is not the same as the standard __init__ function in Python, which is
-    # a purely internal Python method and unknown to the node system!
     def init(self, context):
         self.outputs.new('ImageSocketType', "Image Stack")
         self.outputs.new('LabelSocketType', "Label")
@@ -344,11 +352,6 @@ class DataNode(Node, CaffeTreeNode):
         layout.prop(self, "usemeanfile")
         if self.usemeanfile:
             layout.prop(self,"meanfile")
-    # Detail buttons in the sidebar.
-    # If this function is not defined, the draw_buttons function is used instead
-
-    # Optional: custom label
-    # Explicit user label overrides this, but here we can define a label dynamically
     def draw_label(self):
         return "Data Node"
 
@@ -365,9 +368,6 @@ class PoolNode(Node, CaffeTreeNode):
     bl_icon = 'SOUND'
 
     # === Custom Properties ===
-    # These work just like custom properties in ID data blocks
-    # Extensive information can be found under
-    # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
     modes = [
         ("MAX", "MAX", "Max pooling"),
         ("AVE", "AVE", "Average pooling"),
@@ -377,10 +377,6 @@ class PoolNode(Node, CaffeTreeNode):
     stride = bpy.props.IntProperty(default=2, min=1, soft_max=5)
     mode = bpy.props.EnumProperty(name='Mode', default='MAX', items=modes)
     # === Optional Functions ===
-    # Initialization function, called when a new node is created.
-    # This is the most common place to create the sockets for a node, as shown below.
-    # NOTE: this is not the same as the standard __init__ function in Python, which is
-    # a purely internal Python method and unknown to the node system!
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
         self.outputs.new('ImageSocketType', "Output image")
@@ -399,11 +395,6 @@ class PoolNode(Node, CaffeTreeNode):
         layout.prop(self, "kernel")
         layout.prop(self, "stride")
         layout.prop(self, "mode")
-        # Detail buttons in the sidebar.
-        # If this function is not defined, the draw_buttons function is used instead
-
-        # Optional: custom label
-        # Explicit user label overrides this, but here we can define a label dynamically
 
 
 class ConvNode(Node, CaffeTreeNode):
@@ -418,9 +409,6 @@ class ConvNode(Node, CaffeTreeNode):
     bl_icon = 'SOUND'
 
     # === Custom Properties ===
-    # These work just like custom properties in ID data blocks
-    # Extensive information can be found under
-    # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
     modes = [
         ("xavier", "xavier", "Xavier dist"),
         ("gaussian", "gaussian", "Gaussian dist"),
@@ -437,10 +425,6 @@ class ConvNode(Node, CaffeTreeNode):
     biasdecay = bpy.props.IntProperty(default=0, max=5, min=0)
     biasfill = bpy.props.FloatProperty(default=0.4, soft_max=1.0, min=0)
     # === Optional Functions ===
-    # Initialization function, called when a new node is created.
-    # This is the most common place to create the sockets for a node, as shown below.
-    # NOTE: this is not the same as the standard __init__ function in Python, which is
-    # a purely internal Python method and unknown to the node system!
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
         self.outputs.new('ImageSocketType', "Output image")
@@ -468,11 +452,6 @@ class ConvNode(Node, CaffeTreeNode):
         layout.prop(self, "weights")
         layout.prop(self, "std")
         layout.prop(self, "biasfill")
-        # Detail buttons in the sidebar.
-        # If this function is not defined, the draw_buttons function is used instead
-
-        # Optional: custom label
-        # Explicit user label overrides this, but here we can define a label dynamically
 
 
 class DeConvNode(Node, CaffeTreeNode):
@@ -487,9 +466,6 @@ class DeConvNode(Node, CaffeTreeNode):
     bl_icon = 'SOUND'
 
     # === Custom Properties ===
-    # These work just like custom properties in ID data blocks
-    # Extensive information can be found under
-    # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
     modes = [
         ("xavier", "xavier", "Xavier dist"),
         ("gaussian", "gaussian", "Gaussian dist"),
@@ -506,10 +482,6 @@ class DeConvNode(Node, CaffeTreeNode):
     biasdecay = bpy.props.IntProperty(default=0, max=5, min=0)
     biasfill = bpy.props.FloatProperty(default=0.4, soft_max=1.0, min=0)
     # === Optional Functions ===
-    # Initialization function, called when a new node is created.
-    # This is the most common place to create the sockets for a node, as shown below.
-    # NOTE: this is not the same as the standard __init__ function in Python, which is
-    # a purely internal Python method and unknown to the node system!
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
         self.outputs.new('ImageSocketType', "Output image")
@@ -537,11 +509,6 @@ class DeConvNode(Node, CaffeTreeNode):
         layout.prop(self, "weights")
         layout.prop(self, "std")
         layout.prop(self, "biasfill")
-        # Detail buttons in the sidebar.
-        # If this function is not defined, the draw_buttons function is used instead
-
-        # Optional: custom label
-        # Explicit user label overrides this, but here we can define a label dynamically
 
 
 class FCNode(Node, CaffeTreeNode):
@@ -556,9 +523,6 @@ class FCNode(Node, CaffeTreeNode):
     bl_icon = 'SOUND'
 
     # === Custom Properties ===
-    # These work just like custom properties in ID data blocks
-    # Extensive information can be found under
-    # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
     myStringProperty = bpy.props.StringProperty()
     outputnum = bpy.props.IntProperty(default=1000, min=1, soft_max=10000)
     sparse = bpy.props.IntProperty(default=100, min=1, max=500)
@@ -577,10 +541,6 @@ class FCNode(Node, CaffeTreeNode):
     biasdecay = bpy.props.IntProperty(default=0, max=5, min=0)
     biasfill = bpy.props.FloatProperty(default=0.4, soft_max=1.0, min=0)
     # === Optional Functions ===
-    # Initialization function, called when a new node is created.
-    # This is the most common place to create the sockets for a node, as shown below.
-    # NOTE: this is not the same as the standard __init__ function in Python, which is
-    # a purely internal Python method and unknown to the node system!
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
         self.outputs.new('NAFlatSocketType', "Output Activations")
@@ -607,11 +567,6 @@ class FCNode(Node, CaffeTreeNode):
         layout.prop(self, "sparsity")
         layout.prop(self, "sparse")
         layout.prop(self, "biasfill")
-        # Detail buttons in the sidebar.
-        # If this function is not defined, the draw_buttons function is used instead
-
-        # Optional: custom label
-        # Explicit user label overrides this, but here we can define a label dynamically
 
 
 class FlattenNode(Node, CaffeTreeNode):
@@ -626,14 +581,7 @@ class FlattenNode(Node, CaffeTreeNode):
     bl_icon = 'SOUND'
 
     # === Custom Properties ===
-    # These work just like custom properties in ID data blocks
-    # Extensive information can be found under
-    # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
     # === Optional Functions ===
-    # Initialization function, called when a new node is created.
-    # This is the most common place to create the sockets for a node, as shown below.
-    # NOTE: this is not the same as the standard __init__ function in Python, which is
-    # a purely internal Python method and unknown to the node system!
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
         self.outputs.new('AFlatSocketType', "Flat output")
@@ -650,11 +598,6 @@ class FlattenNode(Node, CaffeTreeNode):
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
         layout.label("Flatten")
-        # Detail buttons in the sidebar.
-        # If this function is not defined, the draw_buttons function is used instead
-
-        # Optional: custom label
-        # Explicit user label overrides this, but here we can define a label dynamically
 
 
 class SilenceNode(Node, CaffeTreeNode):
@@ -667,16 +610,7 @@ class SilenceNode(Node, CaffeTreeNode):
     bl_label = 'Silence Node'
     # Icon identifier
     bl_icon = 'SOUND'
-
-    # === Custom Properties ===
-    # These work just like custom properties in ID data blocks
-    # Extensive information can be found under
-    # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
     # === Optional Functions ===
-    # Initialization function, called when a new node is created.
-    # This is the most common place to create the sockets for a node, as shown below.
-    # NOTE: this is not the same as the standard __init__ function in Python, which is
-    # a purely internal Python method and unknown to the node system!
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input")
 
@@ -692,11 +626,6 @@ class SilenceNode(Node, CaffeTreeNode):
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
         layout.label("Silence")
-        # Detail buttons in the sidebar.
-        # If this function is not defined, the draw_buttons function is used instead
-
-        # Optional: custom label
-        # Explicit user label overrides this, but here we can define a label dynamically
 
 
 class LRNNode(Node, CaffeTreeNode):
@@ -714,18 +643,11 @@ class LRNNode(Node, CaffeTreeNode):
         ("WITHIN_CHANNEL", "WITHIN_CHANNEL", "Go by location"),
     ]
     # === Custom Properties ===
-    # These work just like custom properties in ID data blocks
-    # Extensive information can be found under
-    # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
     alpha = bpy.props.FloatProperty(default=1, min=0, soft_max=50)
     beta = bpy.props.FloatProperty(default=5, min=0, soft_max=50)
     size = bpy.props.IntProperty(default=5, min=1, soft_max=50)
     mode = bpy.props.EnumProperty(name="Mode", default='ACROSS_CHANNELS', items=modes)
     # === Optional Functions ===
-    # Initialization function, called when a new node is created.
-    # This is the most common place to create the sockets for a node, as shown below.
-    # NOTE: this is not the same as the standard __init__ function in Python, which is
-    # a purely internal Python method and unknown to the node system!
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
         self.outputs.new('ImageSocketType', "Normalized output")
@@ -745,11 +667,6 @@ class LRNNode(Node, CaffeTreeNode):
         layout.prop(self, "beta")
         layout.prop(self, "size")
         layout.prop(self, "mode")
-        # Detail buttons in the sidebar.
-        # If this function is not defined, the draw_buttons function is used instead
-
-        # Optional: custom label
-        # Explicit user label overrides this, but here we can define a label dynamically
 
 
 class ActivationNode(Node, CaffeTreeNode):
@@ -767,15 +684,8 @@ class ActivationNode(Node, CaffeTreeNode):
         ('"TanH"', "TanH", "TanH"),
     ]
     # === Custom Properties ===
-    # These work just like custom properties in ID data blocks
-    # Extensive information can be found under
-    # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
     mode = bpy.props.EnumProperty(name="Mode", default='"Sigmoid"', items=modes)
     # === Optional Functions ===
-    # Initialization function, called when a new node is created.
-    # This is the most common place to create the sockets for a node, as shown below.
-    # NOTE: this is not the same as the standard __init__ function in Python, which is
-    # a purely internal Python method and unknown to the node system!
     def init(self, context):
         self.inputs.new('NAFlatSocketType', "Linear input")
         self.outputs.new('AFlatSocketType', "Non Linear output")
@@ -792,11 +702,6 @@ class ActivationNode(Node, CaffeTreeNode):
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
         layout.prop(self, "mode")
-        # Detail buttons in the sidebar.
-        # If this function is not defined, the draw_buttons function is used instead
-
-        # Optional: custom label
-        # Explicit user label overrides this, but here we can define a label dynamically
 
 
 class ReLuNode(Node, CaffeTreeNode):
@@ -811,15 +716,8 @@ class ReLuNode(Node, CaffeTreeNode):
     bl_icon = 'SOUND'
 
     # === Custom Properties ===
-    # These work just like custom properties in ID data blocks
-    # Extensive information can be found under
-    # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
     Negativeg = bpy.props.BoolProperty(default=False)
     # === Optional Functions ===
-    # Initialization function, called when a new node is created.
-    # This is the most common place to create the sockets for a node, as shown below.
-    # NOTE: this is not the same as the standard __init__ function in Python, which is
-    # a purely internal Python method and unknown to the node system!
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
         self.outputs.new('ImageSocketType', "Rectified output")
@@ -836,11 +734,6 @@ class ReLuNode(Node, CaffeTreeNode):
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
         layout.prop(self, "Negativeg")
-        # Detail buttons in the sidebar.
-        # If this function is not defined, the draw_buttons function is used instead
-
-        # Optional: custom label
-        # Explicit user label overrides this, but here we can define a label dynamically
 
 
 class SMLossNode(Node, CaffeTreeNode):
@@ -855,14 +748,7 @@ class SMLossNode(Node, CaffeTreeNode):
     bl_icon = 'SOUND'
     w = bpy.props.FloatProperty(default=0)
     # === Custom Properties ===
-    # These work just like custom properties in ID data blocks
-    # Extensive information can be found under
-    # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
     # === Optional Functions ===
-    # Initialization function, called when a new node is created.
-    # This is the most common place to create the sockets for a node, as shown below.
-    # NOTE: this is not the same as the standard __init__ function in Python, which is
-    # a purely internal Python method and unknown to the node system!
     def init(self, context):
         self.inputs.new('NAFlatSocketType', "Input Probabilities")
         self.inputs.new('LabelSocketType', "Input Label")
@@ -881,11 +767,6 @@ class SMLossNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         layout.label("Softmax Loss")
         layout.prop(self, "w")
-        # Detail buttons in the sidebar.
-        # If this function is not defined, the draw_buttons function is used instead
-
-        # Optional: custom label
-        # Explicit user label overrides this, but here we can define a label dynamically
 
 
 class SCELossNode(Node, CaffeTreeNode):
@@ -900,14 +781,7 @@ class SCELossNode(Node, CaffeTreeNode):
     bl_icon = 'SOUND'
     w = bpy.props.FloatProperty(default=0)
     # === Custom Properties ===
-    # These work just like custom properties in ID data blocks
-    # Extensive information can be found under
-    # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
     # === Optional Functions ===
-    # Initialization function, called when a new node is created.
-    # This is the most common place to create the sockets for a node, as shown below.
-    # NOTE: this is not the same as the standard __init__ function in Python, which is
-    # a purely internal Python method and unknown to the node system!
     def init(self, context):
         self.inputs.new('NAFlatSocketType', "Input values")
         self.inputs.new('AFlatSocketType', "Input values 2")
@@ -926,11 +800,6 @@ class SCELossNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         layout.label("SCE Loss")
         layout.prop(self, "w")
-        # Detail buttons in the sidebar.
-        # If this function is not defined, the draw_buttons function is used instead
-
-        # Optional: custom label
-        # Explicit user label overrides this, but here we can define a label dynamically
 
 
 class EULossNode(Node, CaffeTreeNode):
@@ -945,14 +814,7 @@ class EULossNode(Node, CaffeTreeNode):
     bl_icon = 'SOUND'
     w = bpy.props.FloatProperty(default=0)
     # === Custom Properties ===
-    # These work just like custom properties in ID data blocks
-    # Extensive information can be found under
-    # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
     # === Optional Functions ===
-    # Initialization function, called when a new node is created.
-    # This is the most common place to create the sockets for a node, as shown below.
-    # NOTE: this is not the same as the standard __init__ function in Python, which is
-    # a purely internal Python method and unknown to the node system!
     def init(self, context):
         self.inputs.new('AFlatSocketType', "Input values")
         self.inputs.new('AFlatSocketType', "Input values 2")
@@ -971,11 +833,6 @@ class EULossNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         layout.label("EU Loss")
         layout.prop(self, "w")
-        # Detail buttons in the sidebar.
-        # If this function is not defined, the draw_buttons function is used instead
-
-        # Optional: custom label
-        # Explicit user label overrides this, but here we can define a label dynamically
 
 
 class DropoutNode(Node, CaffeTreeNode):
@@ -990,15 +847,8 @@ class DropoutNode(Node, CaffeTreeNode):
     bl_icon = 'SOUND'
 
     # === Custom Properties ===
-    # These work just like custom properties in ID data blocks
-    # Extensive information can be found under
-    # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
     fac = bpy.props.FloatProperty(default=0.5,min=0,max=1)
     # === Optional Functions ===
-    # Initialization function, called when a new node is created.
-    # This is the most common place to create the sockets for a node, as shown below.
-    # NOTE: this is not the same as the standard __init__ function in Python, which is
-    # a purely internal Python method and unknown to the node system!
     def init(self, context):
         self.inputs.new('NAFlatSocketType', "Input image")
         self.outputs.new('NAFlatSocketType', "Output image")
@@ -1016,11 +866,6 @@ class DropoutNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         layout.label("Dropout factor")
         layout.prop(self, "fac")
-        # Detail buttons in the sidebar.
-        # If this function is not defined, the draw_buttons function is used instead
-
-        # Optional: custom label
-        # Explicit user label overrides this, but here we can define a label dynamically
 
 
 class ConcatNode(Node, CaffeTreeNode):
@@ -1035,15 +880,8 @@ class ConcatNode(Node, CaffeTreeNode):
     bl_icon = 'SOUND'
 
     # === Custom Properties ===
-    # These work just like custom properties in ID data blocks
-    # Extensive information can be found under
-    # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
     dim = bpy.props.BoolProperty(default=True)
     # === Optional Functions ===
-    # Initialization function, called when a new node is created.
-    # This is the most common place to create the sockets for a node, as shown below.
-    # NOTE: this is not the same as the standard __init__ function in Python, which is
-    # a purely internal Python method and unknown to the node system!
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
         self.inputs.new('ImageSocketType', "Input image")
@@ -1062,11 +900,6 @@ class ConcatNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         layout.label("Tick for channels, no tick for batch")
         layout.prop(self, "dim")
-        # Detail buttons in the sidebar.
-        # If this function is not defined, the draw_buttons function is used instead
-
-        # Optional: custom label
-        # Explicit user label overrides this, but here we can define a label dynamically
 
 
 class AccuracyNode(Node, CaffeTreeNode):
@@ -1081,15 +914,8 @@ class AccuracyNode(Node, CaffeTreeNode):
     bl_icon = 'SOUND'
 
     # === Custom Properties ===
-    # These work just like custom properties in ID data blocks
-    # Extensive information can be found under
-    # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
     Testonly = bpy.props.BoolProperty(default=True)
     # === Optional Functions ===
-    # Initialization function, called when a new node is created.
-    # This is the most common place to create the sockets for a node, as shown below.
-    # NOTE: this is not the same as the standard __init__ function in Python, which is
-    # a purely internal Python method and unknown to the node system!
     def init(self, context):
         self.inputs.new('NAFlatSocketType', "Input class")
         self.inputs.new('LabelSocketType', "Input label")
@@ -1108,14 +934,10 @@ class AccuracyNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         layout.label("Tick for only testing")
         layout.prop(self, "Testonly")
-        # Detail buttons in the sidebar.
-        # If this function is not defined, the draw_buttons function is used instead
-
-        # Optional: custom label
-        # Explicit user label overrides this, but here we can define a label dynamically
 
 
 class SolverNode(Node, CaffeTreeNode):
+
     # === Basics ===
     # Description string
     '''A Convolution node'''
@@ -1134,22 +956,27 @@ class SolverNode(Node, CaffeTreeNode):
         ("GPU", "GPU", "GPU"),
         ("CPU", "CPU", "CPU")
     ]
+    gputoggles = []
+    gpunum = getgpus()
+    gpufailed = 0
+    if gpunum == 'Error':
+        gpufailed = 1
+        gpunum = 1
+    for gpu in range(gpunum):
+        gputoggles.extend(['GPU %i'%gpu])
     # === Custom Properties ===
-    # These work just like custom properties in ID data blocks
-    # Extensive information can be found under
-    # http://wiki.blender.org/index.php/Doc:2.6/Manual/Extensions/Python/Properties
     solvername = bpy.props.StringProperty()
     solver = bpy.props.EnumProperty(name="Mode", default='SGD', items=modes)
     compmode = bpy.props.EnumProperty(name="Compute Mode", default='GPU', items=computemodes)
+    gpus = bpy.props.BoolVectorProperty(name = "GPU(s)",description = "Gpus to use",size=gpunum)
     accum = bpy.props.BoolProperty(name='Accumulate Gradients',default=True)
     accumiters = bpy.props.IntProperty(name='Number of minibatches to Accumulate',default=1 ,min=1,soft_max=10)
-    gpu = bpy.props.IntProperty(default=0 , soft_max=1)
-    testinterval = bpy.props.IntProperty(default=500, min=1, soft_max=2000)
-    testruns = bpy.props.IntProperty(default=50, min=1, soft_max=200)
-    displayiter = bpy.props.IntProperty(default=100, min=1, soft_max=5000)
-    maxiter = bpy.props.IntProperty(default=50000, min=5, soft_max=100000)
-    learningrate = bpy.props.FloatProperty(default=0.01, min=0.001, soft_max=1)
-    snapshotiter = bpy.props.IntProperty(default=10000, min=10, soft_max=50000)
+    testinterval = bpy.props.IntProperty(name='Test Interval',default=500, min=1, soft_max=2000)
+    testruns = bpy.props.IntProperty(name='Test Batches',default=50, min=1, soft_max=200)
+    displayiter = bpy.props.IntProperty(name='Display iter.',default=100, min=1, soft_max=5000)
+    maxiter = bpy.props.IntProperty(name='Final iteration',default=50000, min=5, soft_max=100000)
+    learningrate = bpy.props.FloatProperty(name = 'Learning rate',default=0.01, min=0.001, soft_max=1)
+    snapshotiter = bpy.props.IntProperty(name = 'Snapshot iteration',default=10000, min=10, soft_max=50000)
     snapshotpath = bpy.props.StringProperty \
         (
             name="Snapshot Data Path",
@@ -1199,10 +1026,21 @@ class SolverNode(Node, CaffeTreeNode):
         layout.prop(self, "solvername")
         layout.prop(self, "solver")
         layout.prop(self, "compmode")
+
+        ########################GPUS
+        if not self.gpufailed:
+            layout.label("Multiple GPUs req. parallel caffe branch",icon='ERROR')
+        else:
+            layout.label("WARNING: GPU NOT DETECTED",icon='ERROR')
+            layout.label("Check 'nvidia-smi' command can be run",icon='ERROR')
+        if self.compmode == 'GPU':
+            for i,name in enumerate(self.gputoggles):
+                layout.prop(self, "gpus",index=i,text=name,toggle=True)
+        ###############Accumulate batches
         layout.prop(self, "accum")
         if self.accum:
             layout.prop(self,"accumiters")
-        layout.prop(self, "gpu")
+        #layout.prop(self, "gpu")
         layout.prop(self, "testinterval")
         layout.prop(self, "testruns")
         layout.prop(self, "displayiter")
@@ -1218,10 +1056,6 @@ class SolverNode(Node, CaffeTreeNode):
         # Optional: custom label
         # Explicit user label overrides this, but here we can define a label dynamically
 
-# ## Node Categories ###
-# Node categories are a python system for automatically
-# extending the Add menu, toolbar panels and search operator.
-# For more examples see release/scripts/startup/nodeitems_builtins.py
 
 import nodeitems_utils
 from nodeitems_utils import NodeCategory, NodeItem

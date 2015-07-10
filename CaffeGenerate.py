@@ -6,7 +6,6 @@ bl_info = {
 
 import bpy
 import random
-#import numpy as np
 import time
 import os
 
@@ -460,9 +459,18 @@ def deploytemplate(batch, channels, size, datain):
     return deploystring
 
 
-def scripttemplate(caffepath, configpath, solvername, gpu,solver):
+def scripttemplate(caffepath, configpath, solvername, gpus,solver):
+    gpustring = ''
+    usedcount = 0
+    for gpu,used in enumerate(gpus):
+        if used:
+            if usedcount != 0:
+                gpustring += ',' + str(gpu)
+            else:
+                gpustring += str(gpu)
+            usedcount +=1
     if solver == 'GPU':
-        extrastring = '--gpu=%i' %gpu
+        extrastring = '--gpu=%s' %gpustring
     else:
         extrastring = ''
     solverstring = configpath + '%s_solver.prototxt' % solvername
@@ -492,13 +500,13 @@ class Solve(bpy.types.Operator):
             for input in node.inputs:
                 if input.is_linked == True:
                     bottomnode = input.links[0].from_node
-                    while bottomnode.bl_idname == 'NodeReroute':
+                    while bottomnode.bl_idname == 'NodeReroute': #Function just to skip placeholder nodes
                         bottomnodein = bottomnode.inputs
                         bottomnodein = bottomnodein[0]
                         bottomnode = bottomnodein.links[0].from_node
                     bottom = bottomnode.name
                     print ('node %s has input %s' % (nname, bottomnode.name))
-                    bottoms.extend([bottom])
+                    bottoms.extend([bottom]) # Bottoms is the list of all the nodes attached behind the current node
             if node.bl_idname == 'DataNodeType':
                 if node.dbtype == 'LMDB':
                     string = datatemplate(node.name, node.batchsize, node.trainpath, node.testpath, node.supervised,
@@ -568,7 +576,7 @@ class Solve(bpy.types.Operator):
                                               node.maxiter,
                                               node.displayiter, node.snapshotiter, node.solvername, node.snapshotpath,
                                               node.configpath, node.solvername, node.accumiters,solver=node.compmode)
-                scriptstring = scripttemplate(node.caffexec, node.configpath, node.solvername, node.gpu,solver=node.compmode)
+                scriptstring = scripttemplate(node.caffexec, node.configpath, node.solvername, node.gpus,solver=node.compmode)
                 configpath = node.configpath
                 solvername = node.solvername
             elif string == 0:
@@ -578,11 +586,11 @@ class Solve(bpy.types.Operator):
                 dcode.extend([dstring])
                 gtops.extend([node.name])
                 try:
-                    gbottoms.extend([bottoms[0]])
+                    gbottoms.extend([bottoms[0]]) #first node attached to current
                 except IndexError:
                     gbottoms.extend([str(random.random())])
                 try:
-                    g2bottoms.extend([bottoms[1]])
+                    g2bottoms.extend([bottoms[1]]) #Second node attached to current
                 except IndexError:
                     g2bottoms.extend([str(random.random())])
         for juggle in range(30):
@@ -610,48 +618,50 @@ class Solve(bpy.types.Operator):
         scriptfile = open('train_%s.sh' % solvername, mode='w')
         scriptfile.write(scriptstring)
         scriptfile.close()
+        print ('Finished solving tree')
         return {'FINISHED'}  # this lets blender know the operator finished successfully.
 
     def juggleorder(self, names, refs, refs2, code, prefsocket, dcode):
+
+        '''Ever heard of a bubble sort? Meet the worlds most complicated function designed to do just that.
+        It checks whether a node is dependent on the node below it, and orders all the laters in the prototxt
+        by a reference number. For some reason it sort of does it twice. Best just not to touch this and hope it never
+        breaks as no-one will ever EVER work out how fix it.'''
+        #Names, in 1, in2, code chunk, ??, deploy code chunk
         goodorder = 0
-        print (refs)
-        print(refs2)
-        #checks = np.ones((len(names)))
-        checks = [0] * len(names)
-        #while np.sum(checks) > 0:
+        checks = [1] * len(names) #make list of zeros, length names
         while sum(checks) > 0:
             for name in names:
-                x = 0
-                y = 0
-                z = 0
+                Referred1Socket = 0
+                Bottomless = 0
+                Referred2Socket = 0
                 # Start of list is data layer
                 # get location of bottom in top
                 # print (name)
                 #print (names)
                 loc = names.index(name)
                 try:
-                    ref = refs.index(name)
-                    x = 1
+                    ref = refs.index(name) # find where the current node is referred to
+                    Referred1Socket = 1
                 except ValueError:
                     pass
                 try:
-                    float(name)
-
+                    float(name) #we used a float name for nodes that are bottomless
                     print ('passing float')
                     print (name)
-                    y = 1
+                    Bottomless = 1
                 except ValueError:
                     pass
                 try:
-                    tmpref = refs2.index(name)
-                    if x == 1 and prefsocket == 1:
+                    tmpref = refs2.index(name) #check a node isnt reffered to as the second socket
+                    if Referred1Socket == 1 and prefsocket == 1:
+                        ref = tmpref #only put before if on second socket pass, or does not connect to a first socket
+                    elif Referred1Socket == 0: #(Will not be a bottomless node as connects to at least one socket)
                         ref = tmpref
-                    elif x == 0:
-                        ref = tmpref
-                    z = 1
+                    Referred2Socket = 1
                 except ValueError:
                     pass
-                if x + y + z == 0:
+                if Referred1Socket + Bottomless + Referred2Socket == 0:
                     # not referred to by anything, so can be as late as possible
                     ref = 10000000000000000
                     #time.sleep(10)
@@ -661,11 +671,6 @@ class Solve(bpy.types.Operator):
                     checks[loc] = 0
                 else:
                     checks[loc] = 0
-            print (names)
-            print (refs)
-            print (refs2)
-            print (checks)
-            # if in wrong order
         return names, refs, refs2, code, dcode
 
     def swap(self, orig, dest, lists):
