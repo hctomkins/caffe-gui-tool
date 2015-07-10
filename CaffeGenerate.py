@@ -80,8 +80,11 @@ def deconvtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr
     return string
 
 
-def datatemplate(name, batchsize, trainpath, testpath, supervised, dbtype, meanused, imsize, maxval=255, mirror=0, meanfile=0,silout=0):
+def datatemplate(name, batchsize, trainpath, testpath, supervised, dbtype, meanused, imsize, maxval=255, mirror=0, meanfile=0,silout=0,channels=3):
     sf = 1.0 / (maxval + 1)
+    iscolour = 0
+    if channels >1:
+        iscolour = 1
     try:
         extralabel = str(int(name[-1]))
     except ValueError:
@@ -139,12 +142,13 @@ def datatemplate(name, batchsize, trainpath, testpath, supervised, dbtype, meanu
             %s\n\
             }\n\
             image_data_param {\n\
+            is_color: %i\n\
             source: "%s"\n\
             batch_size: %i\n\
             new_height: %i\n\
             new_width: %i\n\
             }\n' \
-            % (mirror, sf, meanstring, trainpath, batchsize,imsize,imsize)
+            % (mirror, sf, meanstring, iscolour,trainpath, batchsize,imsize,imsize)
         testparamstring = \
             'transform_param {\n\
             mirror: %i\n\
@@ -152,12 +156,13 @@ def datatemplate(name, batchsize, trainpath, testpath, supervised, dbtype, meanu
             %s\n\
             }\n\
             image_data_param {\n\
+            is_color: %i\n\
             source: "%s"\n\
             batch_size: %i\n\
             new_height: %i\n\
             new_width: %i\n\
             }\n' \
-            % (mirror, sf, meanstring, testpath, batchsize,imsize,imsize)
+            % (mirror, sf, meanstring, iscolour,testpath, batchsize,imsize,imsize)
     else:
         print (dbtype)
         raise EOFError
@@ -514,7 +519,7 @@ class Solve(bpy.types.Operator):
                     dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
                 elif node.dbtype == "Image files":
                     string = datatemplate(node.name, node.batchsize, node.trainfile, node.testfile, node.supervised,
-                                          node.dbtype, node.usemeanfile,node.imsize,node.maxval,node.mirror,node.meanfile,node.silout)
+                                          node.dbtype, node.usemeanfile,node.imsize,node.maxval,node.mirror,node.meanfile,node.silout,channels=node.channels)
                     dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
             elif node.bl_idname == 'PoolNodeType':
                 string = pooltemplate(node.name, node.kernel, node.stride, node.mode, bottoms[0])
