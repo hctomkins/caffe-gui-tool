@@ -1,6 +1,6 @@
 Caffe Gui Tool
 ==============
-
+NOTE: If you are having issues with the prototxts being disordered, please do a git pull. The issue is now fixed - sorry it took me a couple of days to spot it!
 
 
 For [**installation instructions**](http://bit.ly/1AnTVD2), and everything you could possibly want caffe-gui-tool related, please see [http://chasvortex.github.io/caffe-gui-tool/](http://bit.ly/1AnTVD2)
