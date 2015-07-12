@@ -80,27 +80,29 @@ def deconvtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr
     return string
 
 
-def datatemplate(name, batchsize, trainpath, testpath, supervised, dbtype, meanused, imsize, maxval=255, mirror=0, meanfile=0,silout=0,channels=3):
+def datatemplate(name, batchsize, trainpath, testpath, supervised, dbtype, meanused, imsize, maxval=255, mirror=0,
+                 meanfile=0, silout=0, channels=3):
     sf = 1.0 / (maxval + 1)
-    iscolour = 0
-    if channels >1:
-        iscolour = 1
+    if channels == 1:
+        iscolour = 'is_color: 1' ### When single channel
+    else:
+        iscolour = ''
     try:
-        extralabel = str(int(name[-1]))
+        extralabel = str(int(name[-1])) ####In case of more than one data layer
     except ValueError:
-        extralabel =''
+        extralabel = ''
     if supervised == 0:
         lstring = ''
     else:
-        lstring = 'top: "label%s"' %extralabel
+        lstring = 'top: "label%s"' % extralabel
     if silout and supervised:
-        silencestring =\
-        'layer {\n\
+        silencestring = \
+            'layer {\n\
         bottom: "label%s"\n\
         name: "%s"\n\
         type: "Silence"\n\
-        }\n'\
-        %(extralabel,name+'silence')
+        }\n' \
+            % (extralabel, name + 'silence')
     else:
         silencestring = ''
     if meanused != 0:
@@ -142,13 +144,13 @@ def datatemplate(name, batchsize, trainpath, testpath, supervised, dbtype, meanu
             %s\n\
             }\n\
             image_data_param {\n\
-            is_color: %i\n\
+            %s\n\
             source: "%s"\n\
             batch_size: %i\n\
             new_height: %i\n\
             new_width: %i\n\
             }\n' \
-            % (mirror, sf, meanstring, iscolour,trainpath, batchsize,imsize,imsize)
+            % (mirror, sf, meanstring, iscolour, trainpath, batchsize, imsize, imsize)
         testparamstring = \
             'transform_param {\n\
             mirror: %i\n\
@@ -156,13 +158,13 @@ def datatemplate(name, batchsize, trainpath, testpath, supervised, dbtype, meanu
             %s\n\
             }\n\
             image_data_param {\n\
-            is_color: %i\n\
+            %s\n\
             source: "%s"\n\
             batch_size: %i\n\
             new_height: %i\n\
             new_width: %i\n\
             }\n' \
-            % (mirror, sf, meanstring, iscolour,testpath, batchsize,imsize,imsize)
+            % (mirror, sf, meanstring, iscolour, testpath, batchsize, imsize, imsize)
     else:
         print (dbtype)
         raise EOFError
@@ -188,7 +190,9 @@ def datatemplate(name, batchsize, trainpath, testpath, supervised, dbtype, meanu
         }\n\
         }\n\
         %s\n' \
-        % (name, typestring, name, lstring, paramstring, name, typestring, name, lstring, testparamstring,silencestring)
+        % (
+            name, typestring, name, lstring, paramstring, name, typestring, name, lstring, testparamstring,
+            silencestring)
     return string
 
 
@@ -284,7 +288,7 @@ def dropouttemplate(name, bottom, dropout):
     dropout_param {\n\
     dropout_ratio: %f\n\
     }\n\
-    }\n' % (name, bottom, name, dropout)
+    }\n' % (name, bottom, bottom, dropout)
     return string
 
 
@@ -326,7 +330,7 @@ def Relutemplate(bottom, name, Negativeg):
         bottom: "%s"\n\
         top: "%s"\n\
         }\n' \
-        % (name, bottom, name)
+        % (name, bottom, bottom)
     return string
 
 
@@ -448,7 +452,8 @@ def solvertemplate(type, learningrate, testinterval, testruns, maxiter, displayi
         snapshot: %i\n\
         snapshot_prefix: "%s"\n\
         solver_mode: %s\n' \
-        % (netpath, testruns, testinterval, learningrate, displayiter, maxiter,itersize, snapshotiter, snapshotprefix, solver)
+        % (netpath, testruns, testinterval, learningrate, displayiter, maxiter, itersize, snapshotiter, snapshotprefix,
+           solver)
     solverstring = genericstring + tsstring
     return solverstring
 
@@ -464,18 +469,18 @@ def deploytemplate(batch, channels, size, datain):
     return deploystring
 
 
-def scripttemplate(caffepath, configpath, solvername, gpus,solver):
+def scripttemplate(caffepath, configpath, solvername, gpus, solver):
     gpustring = ''
     usedcount = 0
-    for gpu,used in enumerate(gpus):
+    for gpu, used in enumerate(gpus):
         if used:
             if usedcount != 0:
                 gpustring += ',' + str(gpu)
             else:
                 gpustring += str(gpu)
-            usedcount +=1
+            usedcount += 1
     if solver == 'GPU':
-        extrastring = '--gpu=%s' %gpustring
+        extrastring = '--gpu=%s' % gpustring
     else:
         extrastring = ''
     solverstring = configpath + '%s_solver.prototxt' % solvername
@@ -491,87 +496,129 @@ class Solve(bpy.types.Operator):
     bl_options = {'REGISTER'}  # enable undo for the operator.
 
     def execute(self, context):  # execute() is called by blender when running the operator.
-        gtops = []
-        gbottoms = []
-        g2bottoms = []
-        gcode = []
-        dcode = []
-
-        # The original script
+        gtops = []  # the top (I.E. name of) each layer
+        gbottoms = []  # the first input of all nodes
+        g2bottoms = []  # the second input of all nodes
+        gcode = []  # the code slice of each layer
+        dcode = []  # the 'deploy' code slice of each layer
+        # Go through all nodes, and find nodes that need to 'skip' a node computed in place
+        nodesafterinplacenode = []  # Holds the name of the node after an in place (which needs a fiddled bottom)
+        # and the name of the bottom it needs to be fiddled to
         for node in context.selected_nodes:
+            for number,input in enumerate(node.inputs):
+                if input.is_linked == True:
+                    bottomnode = input.links[0].from_node
+                    # Nodes computed in place
+                    if bottomnode.bl_idname == 'DropoutNodeType' or bottomnode.bl_idname == 'ReluNodeType':  #Function just to skip placeholder nodes
+                        bottomnodein = bottomnode.inputs  #the inputs of the node before
+                        bottomnodein = bottomnodein[0]  #the first input of the node before
+                        bottombottomnode = bottomnodein.links[0].from_node  # the the node before the node before
+                        print('*#*')
+                        nodesafterinplacenode.extend([[node.name,bottombottomnode.name,number]])
+                        print(nodesafterinplacenode)
+        # The original script
+        ########################################### Main loop
+        for node in context.selected_nodes:
+            #################### Which of the nodes inputs are after an in place node?
+            afterinplace = [0,0]
+            newbottoms = [0,0] # assumes node can have max two inputs
+            if len(nodesafterinplacenode) != 0: #Check if inplace swap needed
+                print(nodesafterinplacenode)
+                for nodename,nbottom,number in nodesafterinplacenode:
+                    if node.name == nodename:
+                        afterinplace[number] = 1
+                        newbottoms[number] = nbottom
+
+            ###################### What are all the nodes inputs?
             bottoms = []
             nname = node.name
             string = 0
             for input in node.inputs:
                 if input.is_linked == True:
                     bottomnode = input.links[0].from_node
-                    while bottomnode.bl_idname == 'NodeReroute': #Function just to skip placeholder nodes
-                        bottomnodein = bottomnode.inputs
-                        bottomnodein = bottomnodein[0]
-                        bottomnode = bottomnodein.links[0].from_node
+                    while bottomnode.bl_idname == 'NodeReroute':  # Function just to skip placeholder nodes
+                        bottomnodein = bottomnode.inputs  #the inputs of the node before
+                        bottomnodein = bottomnodein[0]  #the first input of the node before
+                        bottomnode = bottomnodein.links[0].from_node  # the name of the node before the node before
                     bottom = bottomnode.name
                     print ('node %s has input %s' % (nname, bottomnode.name))
-                    bottoms.extend([bottom]) # Bottoms is the list of all the nodes attached behind the current node
+                    bottoms.extend([bottom])  # Bottoms is the list of all the nodes attached behind the current node
+            ######################## Swap the nodes inputs that are in place
+            print('afterinplace:')
+            print(afterinplace)
+            if len(bottoms) > 0:
+                in1 = bottoms[0]
+            if len(bottoms) > 1:
+                in2 = bottoms[1]
+            if afterinplace[0] == 1:
+                in1 = newbottoms[0]
+            if afterinplace[1] == 1:
+                in2 = newbottoms[1]
+            # We keep the list of bottoms, irrelevant of in-place-ness as it is needed for sorting the layers
+            ###########################
             if node.bl_idname == 'DataNodeType':
                 if node.dbtype == 'LMDB':
                     string = datatemplate(node.name, node.batchsize, node.trainpath, node.testpath, node.supervised,
-                                          node.dbtype, node.usemeanfile,node.imsize,node.maxval,node.mirror,node.meanfile,node.silout)
+                                          node.dbtype, node.usemeanfile, node.imsize, node.maxval, node.mirror,
+                                          node.meanfile, node.silout)
                     dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
                 elif node.dbtype == "Image files":
                     string = datatemplate(node.name, node.batchsize, node.trainfile, node.testfile, node.supervised,
-                                          node.dbtype, node.usemeanfile,node.imsize,node.maxval,node.mirror,node.meanfile,node.silout,channels=node.channels)
+                                          node.dbtype, node.usemeanfile, node.imsize, node.maxval, node.mirror,
+                                          node.meanfile, node.silout, channels=node.channels)
                     dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
             elif node.bl_idname == 'PoolNodeType':
-                string = pooltemplate(node.name, node.kernel, node.stride, node.mode, bottoms[0])
+                string = pooltemplate(node.name, node.kernel, node.stride, node.mode, in1)
                 dstring = string
             elif node.bl_idname == 'ConvNodeType':
-                string = convtemplate(node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride, bottoms[0],
+                string = convtemplate(node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride, in1,
                                       node.biasfill, node.filterlr, node.biaslr, node.filterdecay, node.biasdecay,
                                       node.std, node.weights)
                 dstring = string
             elif node.bl_idname == 'DeConvNodeType':
-                string = deconvtemplate(node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride, bottoms[0],
-                                      node.biasfill, node.filterlr, node.biaslr, node.filterdecay, node.biasdecay,
-                                      node.std, node.weights)
+                string = deconvtemplate(node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride,
+                                        in1,
+                                        node.biasfill, node.filterlr, node.biaslr, node.filterdecay, node.biasdecay,
+                                        node.std, node.weights)
                 dstring = string
             elif node.bl_idname == 'FCNodeType':
-                string = FCtemplate(node.name, node.outputnum, bottoms[0], node.sparse, node.weights, node.biasfill,
+                string = FCtemplate(node.name, node.outputnum, in1, node.sparse, node.weights, node.biasfill,
                                     node.filterlr, node.biaslr, node.filterdecay, node.biasdecay, node.std,
                                     node.sparsity)
                 dstring = string
             elif node.bl_idname == 'FlattenNodeType':
-                string = flattentemplate(node.name, bottoms[0])
+                string = flattentemplate(node.name, in1)
                 dstring = string
             elif node.bl_idname == 'SilenceNodeType':
-                string = silencetemplate(node.name, bottoms[0])
+                string = silencetemplate(node.name, in1)
                 dstring = string
             elif node.bl_idname == 'LRNNodeType':
-                string = LRNtemplate(node.name, bottoms[0], node.alpha, node.beta, node.size, node.mode)
+                string = LRNtemplate(node.name, in1, node.alpha, node.beta, node.size, node.mode)
                 dstring = string
             elif node.bl_idname == 'AcNodeType':
-                string = NLtemplate(node.name, bottoms[0], node.mode)
+                string = NLtemplate(node.name, in1, node.mode)
                 dstring = string
                 dstring = string
             elif node.bl_idname == 'ReluNodeType':
-                string = Relutemplate(bottoms[0], node.name, node.Negativeg)
+                string = Relutemplate(in1, node.name, node.Negativeg)
                 dstring = string
             elif node.bl_idname == 'DropoutNodeType':
-                string = dropouttemplate(node.name, bottoms[0], node.fac)
+                string = dropouttemplate(node.name, in1, node.fac)
                 dstring = string
             elif node.bl_idname == 'SMLossNodeType':
-                string = SMtemplate(node.name, bottoms[0], node.w)
+                string = SMtemplate(node.name, in1, node.w)
                 dstring = ''
             elif node.bl_idname == 'SCELossNodeType':
-                string = SCEtemplate(node.name, bottoms[0], bottoms[1], node.w)
+                string = SCEtemplate(node.name, in1,in2, node.w)
                 dstring = ''
             elif node.bl_idname == 'EULossNodeType':
-                string = EUtemplate(node.name, bottoms[0], bottoms[1], node.w)
+                string = EUtemplate(node.name, in1, in2, node.w)
                 dstring = ''
             elif node.bl_idname == 'ConcatNodeType':
-                string = Concattemplate(node.name, bottoms[0], bottoms[1], node.dim)
+                string = Concattemplate(node.name, in1, in2, node.dim)
                 dstring = string
             elif node.bl_idname == 'AccuracyNodeType':
-                string = accuracytemplate(node.name, bottoms[0], node.Testonly)
+                string = accuracytemplate(node.name, in1, node.Testonly)
                 dstring = ''
             elif node.bl_idname == 'NodeReroute':
                 string = ''
@@ -580,8 +627,9 @@ class Solve(bpy.types.Operator):
                 solverstring = solvertemplate(node.solver, node.learningrate, node.testinterval, node.testruns,
                                               node.maxiter,
                                               node.displayiter, node.snapshotiter, node.solvername, node.snapshotpath,
-                                              node.configpath, node.solvername, node.accumiters,solver=node.compmode)
-                scriptstring = scripttemplate(node.caffexec, node.configpath, node.solvername, node.gpus,solver=node.compmode)
+                                              node.configpath, node.solvername, node.accumiters, solver=node.compmode)
+                scriptstring = scripttemplate(node.caffexec, node.configpath, node.solvername, node.gpus,
+                                              solver=node.compmode)
                 configpath = node.configpath
                 solvername = node.solvername
             elif string == 0:
@@ -591,17 +639,17 @@ class Solve(bpy.types.Operator):
                 dcode.extend([dstring])
                 gtops.extend([node.name])
                 try:
-                    gbottoms.extend([bottoms[0]]) #first node attached to current
+                    gbottoms.extend([bottoms[0]])  # first node attached to current
                 except IndexError:
                     gbottoms.extend([str(random.random())])
                 try:
-                    g2bottoms.extend([bottoms[1]]) #Second node attached to current
+                    g2bottoms.extend([bottoms[1]])  # Second node attached to current
                 except IndexError:
                     g2bottoms.extend([str(random.random())])
         for juggle in range(30):
             gtops, gbottoms, g2bottoms, gcode, dcode = self.juggleorder(gtops, gbottoms, g2bottoms, gcode, 0, dcode)
             # for chunk in gcode:
-            #print (chunk)
+            # print (chunk)
             gtops, gbottoms, g2bottoms, gcode, dcode = self.juggleorder(gtops, gbottoms, g2bottoms, gcode, 1, dcode)
         solution = ''
         for chunk in gcode:
@@ -632,9 +680,9 @@ class Solve(bpy.types.Operator):
         It checks whether a node is dependent on the node below it, and orders all the laters in the prototxt
         by a reference number. For some reason it sort of does it twice. Best just not to touch this and hope it never
         breaks as no-one will ever EVER work out how fix it.'''
-        #Names, in 1, in2, code chunk, ??, deploy code chunk
+        # Names, in 1, in2, code chunk, ??, deploy code chunk
         goodorder = 0
-        checks = [1] * len(names) #make list of zeros, length names
+        checks = [1] * len(names)  #make list of zeros, length names
         while sum(checks) > 0:
             for name in names:
                 Referred1Socket = 0
@@ -646,22 +694,22 @@ class Solve(bpy.types.Operator):
                 #print (names)
                 loc = names.index(name)
                 try:
-                    ref = refs.index(name) # find where the current node is referred to
+                    ref = refs.index(name)  # find where the current node is referred to
                     Referred1Socket = 1
                 except ValueError:
                     pass
                 try:
-                    float(name) #we used a float name for nodes that are bottomless
+                    float(name)  #we used a float name for nodes that are bottomless
                     print ('passing float')
                     print (name)
                     Bottomless = 1
                 except ValueError:
                     pass
                 try:
-                    tmpref = refs2.index(name) #check a node isnt reffered to as the second socket
+                    tmpref = refs2.index(name)  #check a node isnt reffered to as the second socket
                     if Referred1Socket == 1 and prefsocket == 1:
-                        ref = tmpref #only put before if on second socket pass, or does not connect to a first socket
-                    elif Referred1Socket == 0: #(Will not be a bottomless node as connects to at least one socket)
+                        ref = tmpref  #only put before if on second socket pass, or does not connect to a first socket
+                    elif Referred1Socket == 0:  #(Will not be a bottomless node as connects to at least one socket)
                         ref = tmpref
                     Referred2Socket = 1
                 except ValueError:
