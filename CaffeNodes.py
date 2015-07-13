@@ -291,7 +291,7 @@ class DataNode(Node, CaffeTreeNode):
     channels = bpy.props.IntProperty(min=1, default=3, soft_max=250)
     maxval = bpy.props.IntProperty(min=1, default=255, soft_max=255)
     batchsize = bpy.props.IntProperty(min=1, default=100, soft_max=500)
-    supervised = bpy.props.BoolProperty(default=True)
+    supervised = bpy.props.BoolProperty(name='Supervised - enable label output',default=True)
     mirror = bpy.props.BoolProperty(name='Random Mirror',default=False)
     silout = bpy.props.BoolProperty(name='Silence label (sil. node doesnt work on labels)',default=False)
     usemeanfile = bpy.props.BoolProperty(name='Use mean file',default=True)
@@ -1049,9 +1049,9 @@ class SolverNode(Node, CaffeTreeNode):
         )
     caffexec = bpy.props.StringProperty \
         (
-        name="Caffe Path",
+        name="Caffe Tools Folder",
         default="",
-        description="Give the path to the config data",
+        description="Give the path to the caffe executable",
         subtype='DIR_PATH'
         )
 
