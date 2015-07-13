@@ -294,7 +294,7 @@ class DataNode(Node, CaffeTreeNode):
     supervised = bpy.props.BoolProperty(name='Supervised - enable label output',default=True)
     mirror = bpy.props.BoolProperty(name='Random Mirror',default=False)
     silout = bpy.props.BoolProperty(name='Silence label (sil. node doesnt work on labels)',default=False)
-    usemeanfile = bpy.props.BoolProperty(name='Use mean file',default=True)
+    usemeanfile = bpy.props.BoolProperty(name='Use mean file',default=False)
     rim = bpy.props.BoolProperty(name='Rectangular Image')
     imsizex = bpy.props.IntProperty(name="Image x size/targetsize",min=1, default=28, soft_max=1000)
     imsizey = bpy.props.IntProperty(name="Image y size/targetsize",min=1, default=28, soft_max=1000)
