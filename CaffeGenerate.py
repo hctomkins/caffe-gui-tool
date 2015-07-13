@@ -10,7 +10,11 @@ import time
 import os
 
 
-def convtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr, blr, fdr, bdr, std, weight_filler):
+def convtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr, blr, fdr, bdr, std, weight_filler,nonsquare=0,x=0,y=0):
+    if not nonsquare:
+        kernelstring = 'kernel_size: %i'%kernelsize
+    else:
+        kernelstring = 'kernel_h: %i\nkernel_w: %i' %(y,x)
     string = \
         'layer {\n\
         name: "%s"\n\
@@ -26,7 +30,7 @@ def convtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr, 
         convolution_param {\n\
         num_output: %i\n\
         pad: %i\n\
-        kernel_size: %i\n\
+        %s\n\
         stride: %i\n\
         weight_filler {\n\
         type: "%s"\n\
@@ -40,12 +44,16 @@ def convtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr, 
         bottom: "%s"\n\
         top: "%s"\n\
         }\n' \
-        % (name, flr, fdr, blr, bdr, OutputLs, Padding, kernelsize, Stride, weight_filler, std, bfv, bottom, name)
+        % (name, flr, fdr, blr, bdr, OutputLs, Padding, kernelstring, Stride, weight_filler, std, bfv, bottom, name)
     tb = [name, bottom]
     return string
 
 
-def deconvtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr, blr, fdr, bdr, std, weight_filler):
+def deconvtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr, blr, fdr, bdr, std, weight_filler,nonsquare=0,x=0,y=0):
+    if not nonsquare:
+        kernelstring = 'kernel_size: %i'%kernelsize
+    else:
+        kernelstring = 'kernel_h: %i\nkernel_w: %i' %(y,x)
     string = \
         'layer {\n\
         name: "%s"\n\
@@ -61,7 +69,7 @@ def deconvtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr
         convolution_param {\n\
         num_output: %i\n\
         pad: %i\n\
-        kernel_size: %i\n\
+        %s\n\
         stride: %i\n\
         weight_filler {\n\
         type: "%s"\n\
@@ -75,7 +83,7 @@ def deconvtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr
         bottom: "%s"\n\
         top: "%s"\n\
         }\n' \
-        % (name, flr, fdr, blr, bdr, OutputLs, Padding, kernelsize, Stride, weight_filler, std, bfv, bottom, name)
+        % (name, flr, fdr, blr, bdr, OutputLs, Padding, kernelstring, Stride, weight_filler, std, bfv, bottom, name)
     tb = [name, bottom]
     return string
 
@@ -214,11 +222,11 @@ def pooltemplate(name, kernel, stride, mode, bottom):
 
 
 def FCtemplate(name, outputs, bottom, sparse, weight_filler, bfv, flr, blr, fdr, bdr, std, sparsity):
+    if sparsity == 1:
+        sparsestring = 'sparse: %i' % sparse
+    else:
+        sparsestring = ''
     if weight_filler == 'gaussian':
-        if sparsity == 1:
-            sparsestring = 'sparse: %i' % sparse
-        else:
-            sparsestring = ''
         wfstring = 'weight_filler {\n\
         type: "gaussian"\n\
         std: %f\n\
@@ -227,7 +235,9 @@ def FCtemplate(name, outputs, bottom, sparse, weight_filler, bfv, flr, blr, fdr,
     else:
         wfstring = 'weight_filler {\n\
         type: "xavier"\n\
-        }\n'
+        std: %f\n\
+        %s\n\
+        }\n'%(std,sparsestring)
     string = \
         'layer {\n\
         name: "%s"\n\
@@ -573,13 +583,13 @@ class Solve(bpy.types.Operator):
             elif node.bl_idname == 'ConvNodeType':
                 string = convtemplate(node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride, in1,
                                       node.biasfill, node.filterlr, node.biaslr, node.filterdecay, node.biasdecay,
-                                      node.std, node.weights)
+                                      node.std, node.weights,nonsquare=node.nonsquare,x=node.kernelsizex,y=node.kernelsizey)
                 dstring = string
             elif node.bl_idname == 'DeConvNodeType':
                 string = deconvtemplate(node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride,
                                         in1,
                                         node.biasfill, node.filterlr, node.biaslr, node.filterdecay, node.biasdecay,
-                                        node.std, node.weights)
+                                        node.std, node.weights,nonsquare=node.nonsquare,x=node.kernelsizex,y=node.kernelsizey)
                 dstring = string
             elif node.bl_idname == 'FCNodeType':
                 string = FCtemplate(node.name, node.outputnum, in1, node.sparse, node.weights, node.biasfill,

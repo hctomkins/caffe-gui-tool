@@ -7,7 +7,7 @@ import subprocess
 from bpy.types import NodeTree, Node, NodeSocket
 
 # Implementation of custom nodes from Python
-def calcsize(self, context):
+def calcsize(self, context,axis='x'):
     '''NOTE - this function works out the dimensions of an image by the time it has reached a certain layer.
     It traverses all the layers, builds up several lists about the properties of each layer, then computes the
     size up to a given layer.'''
@@ -33,7 +33,14 @@ def calcsize(self, context):
             #print (node.inputs[0])
             #print(dir(node.inputs[0]))
             #print(type(node.inputs[0]))
-            kernelsizes.extend([node.kernelsize])
+            if not node.nonsquare:
+                kernelsizes.extend([node.kernelsize])
+            elif axis == 'x':
+                kernelsizes.extend([node.kernelsizex])
+            elif axis == 'y':
+                kernelsizes.extend([node.kernelsizey])
+            else:
+                raise RuntimeError
             strides.extend([node.Stride])
             paddings.extend([node.Padding])
             poolsizes.extend([1])
@@ -47,7 +54,14 @@ def calcsize(self, context):
             #print (node.inputs[0])
             #print(dir(node.inputs[0]))
             #print(type(node.inputs[0]))
-            kernelsizes.extend([node.kernelsize])
+            if not node.nonsquare:
+                kernelsizes.extend([node.kernelsize])
+            elif axis == 'x':
+                kernelsizes.extend([node.kernelsizex])
+            elif axis == 'y':
+                kernelsizes.extend([node.kernelsizey])
+            else:
+                raise RuntimeError
             strides.extend([node.Stride])
             paddings.extend([node.Padding])
             poolsizes.extend([1])
@@ -86,7 +100,12 @@ def calcsize(self, context):
             node = node.inputs[0].links[0].from_node
         elif node.bl_idname == "DataNodeType":
             # When the data node is reached, we must be at the back of the nodetree, so start to work forwards
-            x = float(node.imsize)
+            if not node.rim:
+                x = float(node.imsize)
+            elif axis=='x':
+                x = float(node.imsizex)
+            else:
+                x = float(node.imsizey)
             # work forwards
             numofnodes = len(passes)
             for node in range(numofnodes):
@@ -268,7 +287,7 @@ class DataNode(Node, CaffeTreeNode):
 ]
     # === Custom Properties ===
     dbtype = bpy.props.EnumProperty(name="Database type", description="Type of Data", items=DBs, default='LMDB')
-    imsize = bpy.props.IntProperty(name="Image targetsize",min=1, default=28, soft_max=1000)
+    imsize = bpy.props.IntProperty(name="Image size/targetsize",min=1, default=28, soft_max=1000)
     channels = bpy.props.IntProperty(min=1, default=3, soft_max=250)
     maxval = bpy.props.IntProperty(min=1, default=255, soft_max=255)
     batchsize = bpy.props.IntProperty(min=1, default=100, soft_max=500)
@@ -276,6 +295,9 @@ class DataNode(Node, CaffeTreeNode):
     mirror = bpy.props.BoolProperty(name='Random Mirror',default=False)
     silout = bpy.props.BoolProperty(name='Silence label (sil. node doesnt work on labels)',default=False)
     usemeanfile = bpy.props.BoolProperty(name='Use mean file',default=True)
+    rim = bpy.props.BoolProperty(name='Rectangular Image')
+    imsizex = bpy.props.IntProperty(name="Image x size/targetsize",min=1, default=28, soft_max=1000)
+    imsizey = bpy.props.IntProperty(name="Image y size/targetsize",min=1, default=28, soft_max=1000)
     meanfile = bpy.props.StringProperty \
         (
             name="Mean File Path",
@@ -341,7 +363,12 @@ class DataNode(Node, CaffeTreeNode):
             print(self.dbtype)
         layout.prop(self, "batchsize")
         layout.prop(self, "channels")
-        layout.prop(self, "imsize")
+        layout.prop(self, "rim")
+        if not self.rim:
+            layout.prop(self, "imsize")
+        else:
+            layout.prop(self, "imsizex")
+            layout.prop(self, "imsizey")
         layout.prop(self, "maxval")
         layout.prop(self, "mirror")
         if self.supervised:
@@ -391,7 +418,11 @@ class PoolNode(Node, CaffeTreeNode):
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
-        layout.label("image output is %s pixels" % calcsize(self, context))
+        if calcsize(self, context,axis='x') != calcsize(self, context,axis='y'):
+            layout.label("image x,y output is %s,%s pixels" %
+                         (calcsize(self, context,axis='x'),calcsize(self, context,axis='y')))
+        else:
+            layout.label("image output is %s pixels" %calcsize(self, context,axis='x'))
         layout.prop(self, "kernel")
         layout.prop(self, "stride")
         layout.prop(self, "mode")
@@ -414,7 +445,9 @@ class ConvNode(Node, CaffeTreeNode):
         ("gaussian", "gaussian", "Gaussian dist"),
     ]
     weights = bpy.props.EnumProperty(name='Weights', default='gaussian', items=modes)
-    kernelsize = bpy.props.IntProperty(default=5, min=0, soft_max=25)
+    kernelsize = bpy.props.IntProperty(default=5, min=1, soft_max=25)
+    kernelsizex = bpy.props.IntProperty(default=5, min=1, soft_max=25)
+    kernelsizey = bpy.props.IntProperty(default=5, min=1, soft_max=25)
     Stride = bpy.props.IntProperty(default=1, min=1, soft_max=5)
     Padding = bpy.props.IntProperty(default=0, min=0, soft_max=5)
     OutputLs = bpy.props.IntProperty(default=20, min=1, soft_max=300)
@@ -424,6 +457,7 @@ class ConvNode(Node, CaffeTreeNode):
     filterdecay = bpy.props.IntProperty(default=1, max=5, min=0)
     biasdecay = bpy.props.IntProperty(default=0, max=5, min=0)
     biasfill = bpy.props.FloatProperty(default=0.4, soft_max=1.0, min=0)
+    nonsquare = bpy.props.BoolProperty(name='Rectangular kernel',default=0)
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
@@ -440,8 +474,17 @@ class ConvNode(Node, CaffeTreeNode):
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
-        layout.label("image output is %s pixels" % calcsize(self, context))
-        layout.prop(self, "kernelsize")
+        if calcsize(self, context,axis='x') != calcsize(self, context,axis='y'):
+            layout.label("image x,y output is %s,%s pixels" %
+                         (calcsize(self, context,axis='x'),calcsize(self, context,axis='y')))
+        else:
+            layout.label("image output is %s pixels" %calcsize(self, context,axis='x'))
+        layout.prop(self,"nonsquare")
+        if not self.nonsquare:
+            layout.prop(self, "kernelsize")
+        else:
+            layout.prop(self, "kernelsizex")
+            layout.prop(self, "kernelsizey")
         layout.prop(self, "Stride")
         layout.prop(self, "Padding")
         layout.prop(self, "OutputLs")
@@ -470,8 +513,10 @@ class DeConvNode(Node, CaffeTreeNode):
         ("xavier", "xavier", "Xavier dist"),
         ("gaussian", "gaussian", "Gaussian dist"),
     ]
-    weights = bpy.props.EnumProperty(name='Weights', default='gaussian', items=modes)
-    kernelsize = bpy.props.IntProperty(default=5, min=0, soft_max=25)
+    weights = bpy.props.EnumProperty(name='Weights', default='xavier', items=modes)
+    kernelsize = bpy.props.IntProperty(default=5, min=1, soft_max=25)
+    kernelsizex = bpy.props.IntProperty(default=5, min=1, soft_max=25)
+    kernelsizey = bpy.props.IntProperty(default=5, min=1, soft_max=25)
     Stride = bpy.props.IntProperty(default=1, min=1, soft_max=5)
     Padding = bpy.props.IntProperty(default=0, min=0, soft_max=5)
     OutputLs = bpy.props.IntProperty(default=20, min=1, soft_max=300)
@@ -481,6 +526,7 @@ class DeConvNode(Node, CaffeTreeNode):
     filterdecay = bpy.props.IntProperty(default=1, max=5, min=0)
     biasdecay = bpy.props.IntProperty(default=0, max=5, min=0)
     biasfill = bpy.props.FloatProperty(default=0.4, soft_max=1.0, min=0)
+    nonsquare = bpy.props.BoolProperty(name='Rectangular kernel',default=0)
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
@@ -497,8 +543,17 @@ class DeConvNode(Node, CaffeTreeNode):
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
-        layout.label("image output is %s pixels" % calcsize(self, context))
-        layout.prop(self, "kernelsize")
+        if calcsize(self, context,axis='x') != calcsize(self, context,axis='y'):
+            layout.label("image x,y output is %s,%s pixels" %
+                         (calcsize(self, context,axis='x'),calcsize(self, context,axis='y')))
+        else:
+            layout.label("image output is %s pixels" %calcsize(self, context,axis='x'))
+        layout.prop(self,"nonsquare")
+        if not self.nonsquare:
+            layout.prop(self, "kernelsize")
+        else:
+            layout.prop(self, "kernelsizex")
+            layout.prop(self, "kernelsizey")
         layout.prop(self, "Stride")
         layout.prop(self, "Padding")
         layout.prop(self, "OutputLs")
@@ -527,7 +582,7 @@ class FCNode(Node, CaffeTreeNode):
     outputnum = bpy.props.IntProperty(default=1000, min=1, soft_max=10000)
     sparse = bpy.props.IntProperty(default=100, min=1, max=500)
     sparsity = bpy.props.BoolProperty(default=False)
-    std = bpy.props.FloatProperty(default=0.1, min=0, max=1)
+    std = bpy.props.FloatProperty(default=0.05, min=0, max=1)
     modes = [
         ("xavier", "xavier", "Xavier dist"),
         ("gaussian", "gaussian", "Gaussian dist"),
@@ -565,7 +620,8 @@ class FCNode(Node, CaffeTreeNode):
         layout.prop(self, "weights")
         layout.prop(self, "std")
         layout.prop(self, "sparsity")
-        layout.prop(self, "sparse")
+        if self.sparsity:
+            layout.prop(self, "sparse")
         layout.prop(self, "biasfill")
 
 
