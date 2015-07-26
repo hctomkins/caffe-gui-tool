@@ -88,7 +88,7 @@ def deconvtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr
     return string
 
 
-def datatemplate(name, batchsize, trainpath, testpath, supervised, dbtype, meanused, imsize, maxval=255, mirror=0,
+def datatemplate(name, batchsize, trainpath, testpath, shuffle, supervised, dbtype, meanused, imsize, maxval=255, mirror=0,
                  meanfile=0, silout=0, channels=3):
     sf = 1.0 / (maxval + 1)
     if channels == 1:
@@ -157,8 +157,9 @@ def datatemplate(name, batchsize, trainpath, testpath, supervised, dbtype, meanu
             batch_size: %i\n\
             new_height: %i\n\
             new_width: %i\n\
+            shuffle: %i\n\
             }\n' \
-            % (mirror, sf, meanstring, iscolour, trainpath, batchsize, imsize, imsize)
+            % (mirror, sf, meanstring, iscolour, trainpath, batchsize, imsize, imsize, shuffle)
         testparamstring = \
             'transform_param {\n\
             mirror: %i\n\
@@ -171,8 +172,35 @@ def datatemplate(name, batchsize, trainpath, testpath, supervised, dbtype, meanu
             batch_size: %i\n\
             new_height: %i\n\
             new_width: %i\n\
+            shuffle: %i\n\
             }\n' \
-            % (mirror, sf, meanstring, iscolour, testpath, batchsize, imsize, imsize)
+            % (mirror, sf, meanstring, iscolour, testpath, batchsize, imsize, imsize, shuffle)
+    elif dbtype == 'HDF5Data':
+        typestring = 'HDF5Data'
+        paramstring = \
+            'hdf5_data_param {\n\
+            source: "%s"\n\
+            batch_size: %i\n\
+            shuffle: %i\n\
+            }\n\
+            transform_param {\n\
+            mirror: %i\n\
+            scale: %f\n\
+            %s\n\
+            }\n' \
+            % (trainpath, batchsize, shuffle, mirror, sf, meanstring)
+        testparamstring = \
+            'hdf5_data_param {\n\
+            source: "%s"\n\
+            batch_size: %i\n\
+            shuffle: %i\n\
+            }\n\
+            transform_param {\n\
+            mirror: %i\n\
+            scale: %f\n\
+            %s \n\
+            }\n' \
+            % (testpath, batchsize, shuffle, mirror, sf, meanstring)
     else:
         print (dbtype)
         raise EOFError
@@ -568,12 +596,17 @@ class Solve(bpy.types.Operator):
             ###########################
             if node.bl_idname == 'DataNodeType':
                 if node.dbtype == 'LMDB':
-                    string = datatemplate(node.name, node.batchsize, node.trainpath, node.testpath, node.supervised,
+                    string = datatemplate(node.name, node.batchsize, node.trainpath, node.testpath, node.shuffle, node.supervised,
                                           node.dbtype, node.usemeanfile, node.imsize, node.maxval, node.mirror,
                                           node.meanfile, node.silout)
                     dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
-                elif node.dbtype == "Image files":
-                    string = datatemplate(node.name, node.batchsize, node.trainfile, node.testfile, node.supervised,
+                elif node.dbtype == 'Image files':
+                    string = datatemplate(node.name, node.batchsize, node.trainfile, node.testfile, node.shuffle, node.supervised,
+                                          node.dbtype, node.usemeanfile, node.imsize, node.maxval, node.mirror,
+                                          node.meanfile, node.silout, channels=node.channels)
+                    dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
+                elif node.dbtype == 'HDF5Data':
+                    string = datatemplate(node.name, node.batchsize, node.trainHDF5, node.trainHDF5, node.shuffle, node.supervised,
                                           node.dbtype, node.usemeanfile, node.imsize, node.maxval, node.mirror,
                                           node.meanfile, node.silout, channels=node.channels)
                     dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)

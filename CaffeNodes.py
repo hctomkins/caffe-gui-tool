@@ -284,7 +284,8 @@ class DataNode(Node, CaffeTreeNode):
     bl_icon = 'SOUND'
     DBs = [
         ("LMDB", "LMDB", "Lmdb database"), ("Image files","Image files","Image files"),
-]
+           ("HDF5Data", "HDF5Data", "HDF5 Data")
+    ]
     # === Custom Properties ===
     dbtype = bpy.props.EnumProperty(name="Database type", description="Type of Data", items=DBs, default='LMDB')
     imsize = bpy.props.IntProperty(name="Image size/targetsize",min=1, default=28, soft_max=1000)
@@ -298,6 +299,7 @@ class DataNode(Node, CaffeTreeNode):
     rim = bpy.props.BoolProperty(name='Rectangular Image')
     imsizex = bpy.props.IntProperty(name="Image x size/targetsize",min=1, default=28, soft_max=1000)
     imsizey = bpy.props.IntProperty(name="Image y size/targetsize",min=1, default=28, soft_max=1000)
+    shuffle = bpy.props.BoolProperty(name='Shuffle', default=False)
     meanfile = bpy.props.StringProperty \
         (
             name="Mean File Path",
@@ -333,6 +335,20 @@ class DataNode(Node, CaffeTreeNode):
             description="Get the path to the data",
             subtype='FILE_PATH'
         )
+    trainHDF5 = bpy.props.StringProperty \
+        (
+         name="Train HDF5 File",
+         default="",
+         description="Get the path to the data",
+         subtype='FILE_PATH'
+         )
+    testHDF5 = bpy.props.StringProperty \
+         (
+          name="Test HDF5 File",
+          default="",
+          description="Get the path to the data",
+          subtype='FILE_PATH'
+          )
     # === Optional Functions ===
     def init(self, context):
         self.outputs.new('ImageSocketType', "Image Stack")
@@ -359,6 +375,12 @@ class DataNode(Node, CaffeTreeNode):
                 layout.prop(self,"supervised")
             layout.prop(self, "trainfile")
             layout.prop(self, "testfile")
+            layout.prop(self, "shuffle")
+        elif self.dbtype == 'HDF5Data':
+            layout.prop(self, "trainHDF5")
+            layout.prop(self, "testHDF5")
+            layout.prop(self, "supervised")
+            layout.prop(self, "shuffle")
         else:
             print(self.dbtype)
         layout.prop(self, "batchsize")
