@@ -1153,6 +1153,88 @@ class PowerNode(Node, CaffeTreeNode):
         layout.prop(self, "scale")
         layout.prop(self, "shift")
 
+class ReductionNode(Node, CaffeTreeNode):
+    # === Basics ===
+    # Description string
+    '''Reduction Node'''
+    # Optional identifier string. If not explicitly defined, the python class name is used.
+    bl_idname = 'ReductionNodeType'
+    # Label for nice name display
+    bl_label = 'Reduction Node'
+    # Icon identifier
+    bl_icon = 'SOUND'
+    
+    ops = [ ("SUM", "SUM", "Sum"),
+           ("ASUM", "ASUM", "Absolute Sum"),
+           ("SUMSQ", "SUMSQ", "Sum of squares"),
+           ("MEAN", "MEAN", "Mean")
+    ]
+    
+    # === Custom Properties ===
+    operation = bpy.props.EnumProperty(name='Operation', default='SUM', items=ops)
+    axis = bpy.props.IntProperty(name='Axis', default=0)
+    coeff = bpy.props.FloatProperty(name='Coeff', default=1)
+    # === Optional Functions ===
+    def init(self, context):
+        self.inputs.new('ImageSocketType', "Input data")
+        self.outputs.new('LossSocketType', "Output data")
+    
+    
+    # Copy function to initialize a copied node from an existing one.
+    def copy(self, node):
+        print("Copying from node ", node)
+    
+    # Free function to clean up on removal.
+    def free(self):
+        print("Removing node ", self, ", Goodbye!")
+    
+    # Additional buttons displayed on the node.
+    def draw_buttons(self, context, layout):
+        layout.prop(self, "operation")
+        layout.prop(self, "axis")
+        layout.prop(self, "coeff")
+
+class ReductionNode(Node, CaffeTreeNode):
+    # === Basics ===
+    # Description string
+    '''Reduction Node'''
+    # Optional identifier string. If not explicitly defined, the python class name is used.
+    bl_idname = 'ReductionNodeType'
+    # Label for nice name display
+    bl_label = 'Reduction Node'
+    # Icon identifier
+    bl_icon = 'SOUND'
+    
+    ops = [ ("SUM", "SUM", "Sum"),
+           ("ASUM", "ASUM", "Absolute Sum"),
+           ("SUMSQ", "SUMSQ", "Sum of squares"),
+           ("MEAN", "MEAN", "Mean")
+    ]
+        
+   # === Custom Properties ===
+   operation = bpy.props.EnumProperty(name='Operation', default='SUM', items=ops)
+   axis = bpy.props.IntProperty(name='Axis', default=0)
+   coeff = bpy.props.FloatProperty(name='Coeff', default=1)
+   # === Optional Functions ===
+   def init(self, context):
+       self.inputs.new('ImageSocketType', "Input data")
+       self.outputs.new('LossSocketType', "Output data")
+
+
+    # Copy function to initialize a copied node from an existing one.
+    def copy(self, node):
+        print("Copying from node ", node)
+    
+    # Free function to clean up on removal.
+    def free(self):
+        print("Removing node ", self, ", Goodbye!")
+    
+    # Additional buttons displayed on the node.
+    def draw_buttons(self, context, layout):
+        layout.prop(self, "operation")
+        layout.prop(self, "axis")
+        layout.prop(self, "coeff")
+
 class SolverNode(Node, CaffeTreeNode):
 
     # === Basics ===
@@ -1312,7 +1394,8 @@ node_categories = [
         NodeItem("AccuracyNodeType"),
         NodeItem("EULossNodeType"),
         NodeItem("SCELossNodeType"),
-        NodeItem("SMLossNodeType")
+        NodeItem("SMLossNodeType"),
+        NodeItem("ReductionNodeType")
         
     ]),
     CaffeNodeCategory("DNODES", "Data Nodes", items=[
@@ -1355,6 +1438,7 @@ def register():
     bpy.utils.register_class(HDF5OutputNode)
     bpy.utils.register_class(LogNode)
     bpy.utils.register_class(PowerNode)
+    bpy.utils.register_class(ReductionNode)
 
     nodeitems_utils.register_node_categories("CUSTOM_NODES", node_categories)
 

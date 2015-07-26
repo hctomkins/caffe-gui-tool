@@ -456,8 +456,10 @@ def argmaxtemplate(name, bottom, OutMaxVal, TopK):
         type: "ARGMAX"\n\
         bottom: "%s"\n\
         top: "%s"\n\
+        argmax_param {\n\
         out_max_val: %i\n\
         top_k: %i\n\
+        }\n\
         }\n' \
         % (name, bottom, name, OutMaxVal, TopK)
     return string
@@ -468,7 +470,9 @@ def hdf5outputtemplate(name, bottom, filename):
         name: "%s"\n\
         type: "HDF5Output"\n\
         bottom: "%s"\n\
+        hdf5_output_param {\n\
         file_name: "%s"\n\
+        }\n\
         }\n' \
         % (name, bottom, filename)
     return string
@@ -481,9 +485,11 @@ def logtemplate(name, bottom, scale, shift, base):
         type: "Log"\n\
         bottom: "%s"\n\
         top: "%s"\n\
+        log_param {\n\
         scale: %f\n\
         shift: %f\n\
         base: %f\n\
+        }\n\
         }\n' \
         % (name, bottom, name, scale, shift, base)
     return string
@@ -495,11 +501,29 @@ def powertemplate(name, bottom, power, scale, shift):
         type: "Power"\n\
         bottom: "%s"\n\
         top: "%s"\n\
+        power_param {\n\
         power: %f\n\
         scale: %f\n\
         shift: %f\n\
+        }\n\
         }\n' \
         % (name, bottom, name, power, scale, shift)
+    return string
+
+def reductiontemplate(name, bottom, operation, axis, coeff):
+    string = \
+        'layer {\n\
+        name: "%s"\n\
+        type: "Reduction"\n\
+        bottom: "%s"\n\
+        top: "%s"\n\
+        reduction_param { \n\
+        operation: "%s"\n\
+        axis: %i\n\
+        coeff: %f\n\
+        }\n\
+        }\n' \
+        % (name, bottom, name, operation, axis, coeff)
     return string
 
 def solvertemplate(type, learningrate, testinterval, testruns, maxiter, displayiter, snapshotiter, snapshotname,
@@ -725,6 +749,9 @@ class Solve(bpy.types.Operator):
                 dstring = string;
             elif node.bl_idname == 'PowerNodeType':
                 string = powertemplate(node.name, in1, node.power, node.scale, node.shift)
+                dstring = string;
+            elif node.bl_idname == 'ReductionNodeType':
+                string = reductiontemplate(node.name, in1, node.operation, node.axis, node.coeff)
                 dstring = string;
             elif node.bl_idname == 'NodeReroute':
                 string = ''
