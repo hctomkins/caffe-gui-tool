@@ -1029,7 +1029,7 @@ class ArgMaxNode(Node, CaffeTreeNode):
     TopK = bpy.props.IntProperty(name='Top k',default=1, min=1, soft_max=200)
     # === Optional Functions ===
     def init(self, context):
-        self.inputs.new('NAFlatSocketType', "Input loss")
+        self.inputs.new('LossSocketType', "Input loss")
         self.outputs.new('LossSocketType', "Output Arg Max")
     
     
@@ -1045,6 +1045,42 @@ class ArgMaxNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         layout.prop(self, "OutMaxVal")
         layout.prop(self, "TopK")
+
+class HDF5OutputNode(Node, CaffeTreeNode):
+    # === Basics ===
+    # Description string
+    '''HDF5 Output Node'''
+    # Optional identifier string. If not explicitly defined, the python class name is used.
+    bl_idname = 'HDF5OutputNodeType'
+    # Label for nice name display
+    bl_label = 'HDF 5 Output Node'
+    # Icon identifier
+    bl_icon = 'SOUND'
+    
+    # === Custom Properties ===
+    filename = bpy.props.StringProperty \
+        (
+         name="HDF5 output File",
+         default="",
+         description="The path to the data file",
+         subtype='FILE_PATH'
+         )
+    # === Optional Functions ===
+    def init(self, context):
+        self.inputs.new('ImageSocketType', "Input Image")
+    
+    
+    # Copy function to initialize a copied node from an existing one.
+    def copy(self, node):
+        print("Copying from node ", node)
+    
+    # Free function to clean up on removal.
+    def free(self):
+        print("Removing node ", self, ", Goodbye!")
+    
+    # Additional buttons displayed on the node.
+    def draw_buttons(self, context, layout):
+        layout.prop(self, "filename")
 
 
 class SolverNode(Node, CaffeTreeNode):
@@ -1195,7 +1231,8 @@ node_categories = [
         NodeItem("FlattenNodeType"),
         NodeItem("AcNodeType"),
         NodeItem("ReluNodeType"),
-        NodeItem("DropoutNodeType")
+        NodeItem("DropoutNodeType"),
+        NodeItem("ArgMaxNodeType")
     ]),
     CaffeNodeCategory("SNODES", "Solver Nodes", items=[
         # our basic node
@@ -1203,12 +1240,13 @@ node_categories = [
         NodeItem("AccuracyNodeType"),
         NodeItem("EULossNodeType"),
         NodeItem("SCELossNodeType"),
-        NodeItem("SMLossNodeType"),
-        NodeItem("ArgMaxNodeType")
+        NodeItem("SMLossNodeType")
+        
     ]),
     CaffeNodeCategory("DNODES", "Data Nodes", items=[
         # our basic node
-        NodeItem("DataNodeType")
+        NodeItem("DataNodeType"),
+        NodeItem("HDF5OutputNodeType")
     ]),
     CaffeNodeCategory("MNODES", "Misc Nodes", items=[
         # our basic node
@@ -1242,6 +1280,7 @@ def register():
     bpy.utils.register_class(AFlatSocket)
     bpy.utils.register_class(NAFlatSocket)
     bpy.utils.register_class(SilenceNode)
+    bpy.utils.register_class(HDF5OutputNode)
 
     nodeitems_utils.register_node_categories("CUSTOM_NODES", node_categories)
 

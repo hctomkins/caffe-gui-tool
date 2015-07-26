@@ -462,6 +462,17 @@ def argmaxtemplate(name, bottom, OutMaxVal, TopK):
         % (name, bottom, name, OutMaxVal, TopK)
     return string
 
+def hdf5outputtemplate(name, bottom, filename):
+    string = \
+        'layer {\n\
+        name: "%s"\n\
+        type: "HDF5Output"\n\
+        bottom: "%s"\n\
+        file_name: "%s"\n\
+        }\n' \
+        % (name, bottom, filename)
+    return string
+
 
 def solvertemplate(type, learningrate, testinterval, testruns, maxiter, displayiter, snapshotiter, snapshotname,
                    snapshotpath, configpath, solvername, itersize, solver='GPU'):
@@ -677,6 +688,9 @@ class Solve(bpy.types.Operator):
                 dstring = ''
             elif node.bl_idname == 'ArgMaxNodeType':
                 string = argmaxtemplate(node.name, in1, node.OutMaxVal, node.TopK)
+                dstring = string
+            elif node.bl_idname == 'HDF5OutputNodeType':
+                string = hdf5outputtemplate(node.name, in1, node.filename)
                 dstring = ''
             elif node.bl_idname == 'NodeReroute':
                 string = ''
