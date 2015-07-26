@@ -488,6 +488,19 @@ def logtemplate(name, bottom, scale, shift, base):
         % (name, bottom, name, scale, shift, base)
     return string
 
+def powertemplate(name, bottom, power, scale, shift):
+    string = \
+        'layer {\n\
+        name: "%s"\n\
+        type: "Power"\n\
+        bottom: "%s"\n\
+        top: "%s"\n\
+        power: %f\n\
+        scale: %f\n\
+        shift: %f\n\
+        }\n' \
+        % (name, bottom, name, power, scale, shift)
+    return string
 
 def solvertemplate(type, learningrate, testinterval, testruns, maxiter, displayiter, snapshotiter, snapshotname,
                    snapshotpath, configpath, solvername, itersize, solver='GPU'):
@@ -709,6 +722,9 @@ class Solve(bpy.types.Operator):
                 dstring = ''
             elif node.bl_idname == 'LogNodeType':
                 string = logtemplate(node.name, in1, node.scale, node.shift, node.base)
+                dstring = string;
+            elif node.bl_idname == 'PowerNodeType':
+                string = powertemplate(node.name, in1, node.power, node.scale, node.shift)
                 dstring = string;
             elif node.bl_idname == 'NodeReroute':
                 string = ''

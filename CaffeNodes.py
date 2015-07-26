@@ -1095,9 +1095,9 @@ class LogNode(Node, CaffeTreeNode):
     bl_icon = 'SOUND'
     
     # === Custom Properties ===
-    scale = bpy.props.FloatProperty(name='Scale - alpha', default=1, min=0, soft_max=200)
-    shift = bpy.props.FloatProperty(name='Shift - beta',default=0, soft_min=-200, soft_max=200)
-    base = bpy.props.FloatProperty(name='base - gamma',default=-1, min=-1, soft_max=200)
+    scale = bpy.props.FloatProperty(name='Scale', default=1, min=0, soft_max=200)
+    shift = bpy.props.FloatProperty(name='Shift',default=0, soft_min=-200, soft_max=200)
+    base = bpy.props.FloatProperty(name='base',default=-1, min=-1, soft_max=200)
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input data")
@@ -1117,6 +1117,41 @@ class LogNode(Node, CaffeTreeNode):
         layout.prop(self, "scale")
         layout.prop(self, "shift")
         layout.prop(self, "base")
+
+class PowerNode(Node, CaffeTreeNode):
+    # === Basics ===
+    # Description string
+    '''Power Node'''
+    # Optional identifier string. If not explicitly defined, the python class name is used.
+    bl_idname = 'PowerNodeType'
+    # Label for nice name display
+    bl_label = 'Power Node'
+    # Icon identifier
+    bl_icon = 'SOUND'
+    
+    # === Custom Properties ===
+    power = bpy.props.FloatProperty(name='Power', default=1)
+    scale = bpy.props.FloatProperty(name='Scale', default=1)
+    shift = bpy.props.FloatProperty(name='Shift', default=0)
+    # === Optional Functions ===
+    def init(self, context):
+        self.inputs.new('ImageSocketType', "Input data")
+        self.outputs.new('ImageSocketType', "Output data")
+    
+    
+    # Copy function to initialize a copied node from an existing one.
+    def copy(self, node):
+        print("Copying from node ", node)
+    
+    # Free function to clean up on removal.
+    def free(self):
+        print("Removing node ", self, ", Goodbye!")
+    
+    # Additional buttons displayed on the node.
+    def draw_buttons(self, context, layout):
+        layout.prop(self, "power")
+        layout.prop(self, "scale")
+        layout.prop(self, "shift")
 
 class SolverNode(Node, CaffeTreeNode):
 
@@ -1268,7 +1303,8 @@ node_categories = [
         NodeItem("ReluNodeType"),
         NodeItem("DropoutNodeType"),
         NodeItem("ArgMaxNodeType"),
-        NodeItem("LogNodeType")
+        NodeItem("LogNodeType"),
+        NodeItem("PowerNodeType")
     ]),
     CaffeNodeCategory("SNODES", "Solver Nodes", items=[
         # our basic node
@@ -1318,6 +1354,7 @@ def register():
     bpy.utils.register_class(SilenceNode)
     bpy.utils.register_class(HDF5OutputNode)
     bpy.utils.register_class(LogNode)
+    bpy.utils.register_class(PowerNode)
 
     nodeitems_utils.register_node_categories("CUSTOM_NODES", node_categories)
 
