@@ -474,6 +474,21 @@ def hdf5outputtemplate(name, bottom, filename):
     return string
 
 
+def logtemplate(name, bottom, scale, shift, base):
+    string = \
+        'layer {\n\
+        name: "%s"\n\
+        type: "Log"\n\
+        bottom: "%s"\n\
+        top: "%s"\n\
+        scale: %f\n\
+        shift: %f\n\
+        base: %f\n\
+        }\n' \
+        % (name, bottom, name, scale, shift, base)
+    return string
+
+
 def solvertemplate(type, learningrate, testinterval, testruns, maxiter, displayiter, snapshotiter, snapshotname,
                    snapshotpath, configpath, solvername, itersize, solver='GPU'):
     snapshotprefix = snapshotpath + snapshotname
@@ -692,6 +707,9 @@ class Solve(bpy.types.Operator):
             elif node.bl_idname == 'HDF5OutputNodeType':
                 string = hdf5outputtemplate(node.name, in1, node.filename)
                 dstring = ''
+            elif node.bl_idname == 'LogNodeType':
+                string = logtemplate(node.name, in1, node.scale, node.shift, node.base)
+                dstring = string;
             elif node.bl_idname == 'NodeReroute':
                 string = ''
                 dstring = ''
