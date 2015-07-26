@@ -449,6 +449,19 @@ def accuracytemplate(name, bottom, Testonly):
         % (name, bottom, name, Testonly)
     return string
 
+def argmaxtemplate(name, bottom, OutMaxVal, TopK):
+    string = \
+        'layer {\n\
+        name: "%s"\n\
+        type: "ARGMAX"\n\
+        bottom: "%s"\n\
+        top: "%s"\n\
+        out_max_val: %i\n\
+        top_k: %i\n\
+        }\n' \
+        % (name, bottom, name, OutMaxVal, TopK)
+    return string
+
 
 def solvertemplate(type, learningrate, testinterval, testruns, maxiter, displayiter, snapshotiter, snapshotname,
                    snapshotpath, configpath, solvername, itersize, solver='GPU'):
@@ -641,7 +654,6 @@ class Solve(bpy.types.Operator):
             elif node.bl_idname == 'AcNodeType':
                 string = NLtemplate(node.name, in1, node.mode)
                 dstring = string
-                dstring = string
             elif node.bl_idname == 'ReluNodeType':
                 string = Relutemplate(in1, node.name, node.Negativeg)
                 dstring = string
@@ -662,6 +674,9 @@ class Solve(bpy.types.Operator):
                 dstring = string
             elif node.bl_idname == 'AccuracyNodeType':
                 string = accuracytemplate(node.name, in1, node.Testonly)
+                dstring = ''
+            elif node.bl_idname == 'ArgMaxNodeType':
+                string = argmaxtemplate(node.name, in1, node.OutMaxVal, node.TopK)
                 dstring = ''
             elif node.bl_idname == 'NodeReroute':
                 string = ''

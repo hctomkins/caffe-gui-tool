@@ -1013,6 +1013,39 @@ class AccuracyNode(Node, CaffeTreeNode):
         layout.label("Tick for only testing")
         layout.prop(self, "Testonly")
 
+class ArgMaxNode(Node, CaffeTreeNode):
+    # === Basics ===
+    # Description string
+    '''Arg Max Node'''
+    # Optional identifier string. If not explicitly defined, the python class name is used.
+    bl_idname = 'ArgMaxNodeType'
+    # Label for nice name display
+    bl_label = 'Arg Max Node'
+    # Icon identifier
+    bl_icon = 'SOUND'
+    
+    # === Custom Properties ===
+    OutMaxVal = bpy.props.BoolProperty(name='Output max value', default=False)
+    TopK = bpy.props.IntProperty(name='Top k',default=1, min=1, soft_max=200)
+    # === Optional Functions ===
+    def init(self, context):
+        self.inputs.new('NAFlatSocketType', "Input loss")
+        self.outputs.new('LossSocketType', "Output Arg Max")
+    
+    
+    # Copy function to initialize a copied node from an existing one.
+    def copy(self, node):
+        print("Copying from node ", node)
+    
+    # Free function to clean up on removal.
+    def free(self):
+        print("Removing node ", self, ", Goodbye!")
+    
+    # Additional buttons displayed on the node.
+    def draw_buttons(self, context, layout):
+        layout.prop(self, "OutMaxVal")
+        layout.prop(self, "TopK")
+
 
 class SolverNode(Node, CaffeTreeNode):
 
@@ -1170,7 +1203,8 @@ node_categories = [
         NodeItem("AccuracyNodeType"),
         NodeItem("EULossNodeType"),
         NodeItem("SCELossNodeType"),
-        NodeItem("SMLossNodeType")
+        NodeItem("SMLossNodeType"),
+        NodeItem("ArgMaxNodeType")
     ]),
     CaffeNodeCategory("DNODES", "Data Nodes", items=[
         # our basic node
@@ -1200,6 +1234,7 @@ def register():
     bpy.utils.register_class(EULossNode)
     bpy.utils.register_class(ConcatNode)
     bpy.utils.register_class(AccuracyNode)
+    bpy.utils.register_class(ArgMaxNode)
     bpy.utils.register_class(SolverNode)
     bpy.utils.register_class(ImageSocket)
     bpy.utils.register_class(LabelSocket)
