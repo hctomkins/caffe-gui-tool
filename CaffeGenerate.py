@@ -1,6 +1,6 @@
 __author__ = 'hugh'
 bl_info = {
-    "name": "Creat Caffe solution",
+    "name": "Create Caffe solution",
     "category": "Object",
 }
 
@@ -10,7 +10,7 @@ import time
 import os
 
 
-def convtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr, blr, fdr, bdr, std, weight_filler,nonsquare=0,x=0,y=0):
+def convtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, top, bfv, flr, blr, fdr, bdr, std, weight_filler,nonsquare=0,x=0,y=0):
     if not nonsquare:
         kernelstring = 'kernel_size: %i'%kernelsize
     else:
@@ -44,12 +44,12 @@ def convtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr, 
         bottom: "%s"\n\
         top: "%s"\n\
         }\n' \
-        % (name, flr, fdr, blr, bdr, OutputLs, Padding, kernelstring, Stride, weight_filler, std, bfv, bottom, name)
+        % (name, flr, fdr, blr, bdr, OutputLs, Padding, kernelstring, Stride, weight_filler, std, bfv, bottom, top)
     tb = [name, bottom]
     return string
 
 
-def deconvtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr, blr, fdr, bdr, std, weight_filler,nonsquare=0,x=0,y=0):
+def deconvtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, top, bfv, flr, blr, fdr, bdr, std, weight_filler,nonsquare=0,x=0,y=0):
     if not nonsquare:
         kernelstring = 'kernel_size: %i'%kernelsize
     else:
@@ -83,12 +83,12 @@ def deconvtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr
         bottom: "%s"\n\
         top: "%s"\n\
         }\n' \
-        % (name, flr, fdr, blr, bdr, OutputLs, Padding, kernelstring, Stride, weight_filler, std, bfv, bottom, name)
+        % (name, flr, fdr, blr, bdr, OutputLs, Padding, kernelstring, Stride, weight_filler, std, bfv, bottom, top)
     tb = [name, bottom]
     return string
 
 
-def datatemplate(name, batchsize, trainpath, testpath, shuffle, supervised, dbtype, meanused, imsize, maxval=255, mirror=0,
+def datatemplate(name, top1, top2, batchsize, trainpath, testpath, shuffle, supervised, dbtype, meanused, imsize, maxval=255, mirror=0,
                  meanfile=0, silout=0, channels=3):
     sf = 1.0 / (maxval + 1)
     if channels == 1:
@@ -102,15 +102,15 @@ def datatemplate(name, batchsize, trainpath, testpath, shuffle, supervised, dbty
     if supervised == 0:
         lstring = ''
     else:
-        lstring = 'top: "label%s"' % extralabel
+        lstring = 'top: "%s%s"' % (top2, extralabel)
     if silout and supervised:
         silencestring = \
             'layer {\n\
-        bottom: "label%s"\n\
+        bottom: "%s%s"\n\
         name: "%s"\n\
         type: "Silence"\n\
         }\n' \
-            % (extralabel, name + 'silence')
+            % (top2, extralabel, name + 'silence')
     else:
         silencestring = ''
     if meanused != 0:
@@ -227,12 +227,12 @@ def datatemplate(name, batchsize, trainpath, testpath, shuffle, supervised, dbty
         }\n\
         %s\n' \
         % (
-            name, typestring, name, lstring, paramstring, name, typestring, name, lstring, testparamstring,
+            name, typestring, top1, lstring, paramstring, name, typestring, top1, lstring, testparamstring,
             silencestring)
     return string
 
 
-def pooltemplate(name, kernel, stride, mode, bottom):
+def pooltemplate(name, kernel, stride, mode, bottom, top):
     string = \
         'layer {\n\
         name: "%s"\n\
@@ -245,11 +245,11 @@ def pooltemplate(name, kernel, stride, mode, bottom):
         stride: %i\n\
         }\n\
         }\n' \
-        % (name, bottom, name, mode, kernel, stride)
+        % (name, bottom, top, mode, kernel, stride)
     return string
 
 
-def FCtemplate(name, outputs, bottom, sparse, weight_filler, bfv, flr, blr, fdr, bdr, std, sparsity):
+def FCtemplate(name, outputs, bottom, top, sparse, weight_filler, bfv, flr, blr, fdr, bdr, std, sparsity):
     if sparsity == 1:
         sparsestring = 'sparse: %i' % sparse
     else:
@@ -289,11 +289,11 @@ def FCtemplate(name, outputs, bottom, sparse, weight_filler, bfv, flr, blr, fdr,
         bottom: "%s"\n\
         top: "%s"\n\
         }\n' \
-        % (name, flr, fdr, blr, bdr, outputs, wfstring, bfv, bottom, name)
+        % (name, flr, fdr, blr, bdr, outputs, wfstring, bfv, bottom, top)
     return string
 
 
-def flattentemplate(name, bottom):
+def flattentemplate(name, bottom, top):
     string = \
         'layer {\n\
         bottom: "%s"\n\
@@ -301,7 +301,7 @@ def flattentemplate(name, bottom):
         name: "%s"\n\
         type: "Flatten"\n\
         }\n' \
-        % (bottom, name, name)
+        % (bottom, top, name)
     return string
 
 
@@ -316,7 +316,7 @@ def silencetemplate(name, bottom):
     return string
 
 
-def dropouttemplate(name, bottom, dropout):
+def dropouttemplate(name, bottom, top, dropout):
     string = \
         'layer {\n\
     name: "%s"\n\
@@ -326,11 +326,11 @@ def dropouttemplate(name, bottom, dropout):
     dropout_param {\n\
     dropout_ratio: %f\n\
     }\n\
-    }\n' % (name, bottom, bottom, dropout)
+    }\n' % (name, bottom, top, dropout)
     return string
 
 
-def LRNtemplate(name, bottom, alpha, beta, size, mode):
+def LRNtemplate(name, bottom, top, alpha, beta, size, mode):
     string = \
         'layer {\n\
         name: "%s"\n\
@@ -344,11 +344,11 @@ def LRNtemplate(name, bottom, alpha, beta, size, mode):
         norm_region: %s\n\
         }\n\
         }\n' \
-        % (name, bottom, name, size, alpha, beta, mode)
+        % (name, bottom, top, size, alpha, beta, mode)
     return string
 
 
-def NLtemplate(name, bottom, mode):
+def NLtemplate(name, bottom, top, mode):
     string = \
         'layer {\n\
         name: "%s"\n\
@@ -356,11 +356,11 @@ def NLtemplate(name, bottom, mode):
         top: "%s"\n\
         type: %s\n\
         }\n' \
-        % (name, bottom, name, mode)
+        % (name, bottom, top, mode)
     return string
 
 
-def Relutemplate(bottom, name, Negativeg):
+def Relutemplate(bottom, top, name, Negativeg):
     string = \
         'layer {\n\
         name: "%s"\n\
@@ -368,53 +368,53 @@ def Relutemplate(bottom, name, Negativeg):
         bottom: "%s"\n\
         top: "%s"\n\
         }\n' \
-        % (name, bottom, bottom)
+        % (name, bottom, top)
     return string
 
 
-def SMtemplate(name, bottom, w):
+def SMtemplate(name, bottom1, bottom2, top, w):
     string = \
         'layer {\n\
-        name: "loss"\n\
+        name: "%s"\n\
         type: "SoftmaxWithLoss"\n\
         bottom: "%s"\n\
-        bottom: "label"\n\
+        bottom: "%s"\n\
         top: "%s"\n\
         loss_weight: %f\n\
         }\n' \
-        % (bottom, name, w)
+        % (name, bottom1, bottom2, top, w)
     return string
 
 
-def SCEtemplate(name, bottom1, bottom2, w):
+def SCEtemplate(name, bottom1, bottom2, top, w):
     string = \
         'layer {\n\
-        name: "loss"\n\
+        name: "%s"\n\
         type: "SigmoidCrossEntropyLoss"\n\
         bottom: "%s"\n\
         bottom: "%s"\n\
         top: "%s"\n\
         loss_weight: %f\n\
         }\n' \
-        % (bottom1, bottom2, name, w)
+        % (name, bottom1, bottom2, top, w)
     return string
 
 
-def EUtemplate(name, bottom1, bottom2, w):
+def EUtemplate(name, bottom1, bottom2, top, w):
     string = \
         'layer {\n\
-        name: "loss"\n\
+        name: "%s"\n\
         type: "EuclideanLoss"\n\
         bottom: "%s"\n\
         bottom: "%s"\n\
         top: "%s"\n\
         loss_weight: %f\n\
         }\n' \
-        % (bottom1, bottom2, name, w)
+        % (name, bottom1, bottom2, top, w)
     return string
 
 
-def Concattemplate(name, bottom1, bottom2, dim):
+def Concattemplate(name, bottom1, bottom2, top, axis):
     string = \
         'layer {\n\
         name: "%s"\n\
@@ -423,14 +423,14 @@ def Concattemplate(name, bottom1, bottom2, dim):
         top: "%s"\n\
         type: "Concat"\n\
         concat_param {\n\
-        concat_dim: %i\n\
+        axis: %i\n\
         }\n\
         }\n' \
-        % (name, bottom1, bottom2, name, dim)
+        % (name, bottom1, bottom2, top, axis)
     return string
 
 
-def accuracytemplate(name, bottom, Testonly):
+def accuracytemplate(name, bottom, top, Testonly):
     if Testonly == 1:
         Testonly = 'include { \n\
             phase: TEST \n\
@@ -446,10 +446,10 @@ def accuracytemplate(name, bottom, Testonly):
         top: "%s"\n\
         %s\n\
         }\n' \
-        % (name, bottom, name, Testonly)
+        % (name, bottom, top, Testonly)
     return string
 
-def argmaxtemplate(name, bottom, OutMaxVal, TopK):
+def argmaxtemplate(name, bottom, top, OutMaxVal, TopK):
     string = \
         'layer {\n\
         name: "%s"\n\
@@ -461,7 +461,7 @@ def argmaxtemplate(name, bottom, OutMaxVal, TopK):
         top_k: %i\n\
         }\n\
         }\n' \
-        % (name, bottom, name, OutMaxVal, TopK)
+        % (name, bottom, top, OutMaxVal, TopK)
     return string
 
 def hdf5outputtemplate(name, bottom, filename):
@@ -478,7 +478,7 @@ def hdf5outputtemplate(name, bottom, filename):
     return string
 
 
-def logtemplate(name, bottom, scale, shift, base):
+def logtemplate(name, bottom, top, scale, shift, base):
     string = \
         'layer {\n\
         name: "%s"\n\
@@ -491,10 +491,10 @@ def logtemplate(name, bottom, scale, shift, base):
         base: %f\n\
         }\n\
         }\n' \
-        % (name, bottom, name, scale, shift, base)
+        % (name, bottom, top, scale, shift, base)
     return string
 
-def powertemplate(name, bottom, power, scale, shift):
+def powertemplate(name, bottom, top, power, scale, shift):
     string = \
         'layer {\n\
         name: "%s"\n\
@@ -507,10 +507,10 @@ def powertemplate(name, bottom, power, scale, shift):
         shift: %f\n\
         }\n\
         }\n' \
-        % (name, bottom, name, power, scale, shift)
+        % (name, bottom, top, power, scale, shift)
     return string
 
-def reductiontemplate(name, bottom, operation, axis, coeff):
+def reductiontemplate(name, bottom, top, operation, axis, coeff):
     string = \
         'layer {\n\
         name: "%s"\n\
@@ -518,12 +518,34 @@ def reductiontemplate(name, bottom, operation, axis, coeff):
         bottom: "%s"\n\
         top: "%s"\n\
         reduction_param { \n\
-        operation: "%s"\n\
+        operation: %s\n\
         axis: %i\n\
         coeff: %f\n\
         }\n\
         }\n' \
-        % (name, bottom, name, operation, axis, coeff)
+        % (name, bottom, top, operation, axis, coeff)
+    return string
+
+def slicetemplate(name, bottom, tops, axis, slice_points):
+    top_string = ""
+    for top in tops:
+        top_string += 'top: "%s"\n' % top
+    slice_points_string = ""
+    for slice_point in slice_points:
+        slice_points_string += 'slice_point: %i\n' % slice_point
+
+    string = \
+        'layer {\n\
+        name: "%s"\n\
+        type: "Slice"\n\
+        bottom: "%s"\n\
+        %s\
+        slice_param { \n\
+        axis: %i\n\
+        %s\n\
+        }\n\
+        }\n' \
+        % (name, bottom, top_string, axis, slice_points_string)
     return string
 
 def solvertemplate(type, learningrate, testinterval, testruns, maxiter, displayiter, snapshotiter, snapshotname,
@@ -615,144 +637,111 @@ class Solve(bpy.types.Operator):
         g2bottoms = []  # the second input of all nodes
         gcode = []  # the code slice of each layer
         dcode = []  # the 'deploy' code slice of each layer
-        # Go through all nodes, and find nodes that need to 'skip' a node computed in place
-        nodesafterinplacenode = []  # Holds the name of the node after an in place (which needs a fiddled bottom)
-        # and the name of the bottom it needs to be fiddled to
-        for node in context.selected_nodes:
-            for number,input in enumerate(node.inputs):
-                if input.is_linked == True:
-                    bottomnode = input.links[0].from_node
-                    # Nodes computed in place
-                    if bottomnode.bl_idname == 'DropoutNodeType' or bottomnode.bl_idname == 'ReluNodeType':  #Function just to skip placeholder nodes
-                        bottomnodein = bottomnode.inputs  #the inputs of the node before
-                        bottomnodein = bottomnodein[0]  #the first input of the node before
-                        bottombottomnode = bottomnodein.links[0].from_node  # the the node before the node before
-                        print('*#*')
-                        nodesafterinplacenode.extend([[node.name,bottombottomnode.name,number]])
-                        print(nodesafterinplacenode)
-        # The original script
         ########################################### Main loop
         for node in context.selected_nodes:
-            #################### Which of the nodes inputs are after an in place node?
-            afterinplace = [0,0]
-            newbottoms = [0,0] # assumes node can have max two inputs
-            if len(nodesafterinplacenode) != 0: #Check if inplace swap needed
-                print(nodesafterinplacenode)
-                for nodename,nbottom,number in nodesafterinplacenode:
-                    if node.name == nodename:
-                        afterinplace[number] = 1
-                        newbottoms[number] = nbottom
-
             ###################### What are all the nodes inputs?
             bottoms = []
             nname = node.name
             string = 0
             for input in node.inputs:
                 if input.is_linked == True:
-                    bottomnode = input.links[0].from_node
-                    while bottomnode.bl_idname == 'NodeReroute':  # Function just to skip placeholder nodes
-                        bottomnodein = bottomnode.inputs  #the inputs of the node before
-                        bottomnodein = bottomnodein[0]  #the first input of the node before
-                        bottomnode = bottomnodein.links[0].from_node  # the name of the node before the node before
-                    bottom = bottomnode.name
-                    print ('node %s has input %s' % (nname, bottomnode.name))
+                    bottom = input.links[0].from_socket.output_name
                     bottoms.extend([bottom])  # Bottoms is the list of all the nodes attached behind the current node
-            ######################## Swap the nodes inputs that are in place
-            print('afterinplace:')
-            print(afterinplace)
-            if len(bottoms) > 0:
-                in1 = bottoms[0]
-            if len(bottoms) > 1:
-                in2 = bottoms[1]
-            if afterinplace[0] == 1:
-                in1 = newbottoms[0]
-            if afterinplace[1] == 1:
-                in2 = newbottoms[1]
-            # We keep the list of bottoms, irrelevant of in-place-ness as it is needed for sorting the layers
             ###########################
             if node.bl_idname == 'DataNodeType':
                 if node.dbtype == 'LMDB':
-                    string = datatemplate(node.name, node.batchsize, node.trainpath, node.testpath, node.shuffle, node.supervised,
+                    string = datatemplate(node.name, node.outputs[0].output_name, node.outputs[1].output_name, node.batchsize,
+                                          node.trainpath, node.testpath, node.shuffle, node.supervised,
                                           node.dbtype, node.usemeanfile, node.imsize, node.maxval, node.mirror,
                                           node.meanfile, node.silout)
                     dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
                 elif node.dbtype == 'Image files':
-                    string = datatemplate(node.name, node.batchsize, node.trainfile, node.testfile, node.shuffle, node.supervised,
+                    string = datatemplate(node.name, node.outputs[0].output_name, node.outputs[1].output_name,
+                                          node.batchsize, node.trainfile, node.testfile, node.shuffle, node.supervised,
                                           node.dbtype, node.usemeanfile, node.imsize, node.maxval, node.mirror,
                                           node.meanfile, node.silout, channels=node.channels)
                     dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
                 elif node.dbtype == 'HDF5Data':
-                    string = datatemplate(node.name, node.batchsize, node.trainHDF5, node.trainHDF5, node.shuffle, node.supervised,
+                    string = datatemplate(node.name, node.outputs[0].output_name, node.outputs[1].output_name,
+                                          node.batchsize, node.trainHDF5, node.trainHDF5, node.shuffle, node.supervised,
                                           node.dbtype, node.usemeanfile, node.imsize, node.maxval, node.mirror,
                                           node.meanfile, node.silout, channels=node.channels)
                     dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
             elif node.bl_idname == 'PoolNodeType':
-                string = pooltemplate(node.name, node.kernel, node.stride, node.mode, in1)
+                string = pooltemplate(node.name, node.kernel, node.stride, node.mode, bottoms[0], node.outputs[0].output_name)
                 dstring = string
             elif node.bl_idname == 'ConvNodeType':
-                string = convtemplate(node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride, in1,
+                string = convtemplate(node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride, bottoms[0], node.outputs[0].output_name,
                                       node.biasfill, node.filterlr, node.biaslr, node.filterdecay, node.biasdecay,
                                       node.std, node.weights,nonsquare=node.nonsquare,x=node.kernelsizex,y=node.kernelsizey)
                 dstring = string
             elif node.bl_idname == 'DeConvNodeType':
                 string = deconvtemplate(node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride,
-                                        in1,
+                                        bottoms[0], node.outputs[0].output_name,
                                         node.biasfill, node.filterlr, node.biaslr, node.filterdecay, node.biasdecay,
                                         node.std, node.weights,nonsquare=node.nonsquare,x=node.kernelsizex,y=node.kernelsizey)
                 dstring = string
             elif node.bl_idname == 'FCNodeType':
-                string = FCtemplate(node.name, node.outputnum, in1, node.sparse, node.weights, node.biasfill,
+                string = FCtemplate(node.name, node.outputnum, bottoms[0], node.outputs[0].output_name, node.sparse, node.weights, node.biasfill,
                                     node.filterlr, node.biaslr, node.filterdecay, node.biasdecay, node.std,
                                     node.sparsity)
                 dstring = string
             elif node.bl_idname == 'FlattenNodeType':
-                string = flattentemplate(node.name, in1)
+                string = flattentemplate(node.name, bottoms[0], node.outputs[0].output_name)
                 dstring = string
             elif node.bl_idname == 'SilenceNodeType':
-                string = silencetemplate(node.name, in1)
+                string = silencetemplate(node.name, bottoms[0])
                 dstring = string
             elif node.bl_idname == 'LRNNodeType':
-                string = LRNtemplate(node.name, in1, node.alpha, node.beta, node.size, node.mode)
+                string = LRNtemplate(node.name, bottoms[0], node.outputs[0].output_name, node.alpha, node.beta, node.size, node.mode)
                 dstring = string
             elif node.bl_idname == 'AcNodeType':
-                string = NLtemplate(node.name, in1, node.mode)
+                string = NLtemplate(node.name, bottoms[0], node.outputs[0].output_name, node.mode)
                 dstring = string
             elif node.bl_idname == 'ReluNodeType':
-                string = Relutemplate(in1, node.name, node.Negativeg)
+                string = Relutemplate(bottoms[0], node.outputs[0].output_name, node.name, node.Negativeg)
                 dstring = string
             elif node.bl_idname == 'DropoutNodeType':
-                string = dropouttemplate(node.name, in1, node.fac)
+                string = dropouttemplate(node.name, bottoms[0], node.outputs[0].output_name, node.fac)
                 dstring = string
             elif node.bl_idname == 'SMLossNodeType':
-                string = SMtemplate(node.name, in1, node.w)
+                string = SMtemplate(node.name, bottoms[0], bottoms[1], node.outputs[0].output_name, node.w)
                 dstring = ''
             elif node.bl_idname == 'SCELossNodeType':
-                string = SCEtemplate(node.name, in1,in2, node.w)
+                string = SCEtemplate(node.name, bottoms[0],bottoms[1], node.outputs[0].output_name, node.w)
                 dstring = ''
             elif node.bl_idname == 'EULossNodeType':
-                string = EUtemplate(node.name, in1, in2, node.w)
+                string = EUtemplate(node.name, bottoms[0], bottoms[1], node.outputs[0].output_name, node.w)
                 dstring = ''
             elif node.bl_idname == 'ConcatNodeType':
-                string = Concattemplate(node.name, in1, in2, node.dim)
+                string = Concattemplate(node.name, bottoms[0], bottoms[1], node.outputs[0].output_name, node.axis)
                 dstring = string
             elif node.bl_idname == 'AccuracyNodeType':
-                string = accuracytemplate(node.name, in1, node.Testonly)
+                string = accuracytemplate(node.name, bottoms[0], node.outputs[0].output_name, node.Testonly)
                 dstring = ''
             elif node.bl_idname == 'ArgMaxNodeType':
-                string = argmaxtemplate(node.name, in1, node.OutMaxVal, node.TopK)
+                string = argmaxtemplate(node.name, bottoms[0], node.outputs[0].output_name, node.OutMaxVal, node.TopK)
                 dstring = string
             elif node.bl_idname == 'HDF5OutputNodeType':
-                string = hdf5outputtemplate(node.name, in1, node.filename)
+                string = hdf5outputtemplate(node.name, bottoms[0], node.filename)
                 dstring = ''
             elif node.bl_idname == 'LogNodeType':
-                string = logtemplate(node.name, in1, node.scale, node.shift, node.base)
+                string = logtemplate(node.name, bottoms[0], node.outputs[0].output_name, node.scale, node.shift, node.base)
                 dstring = string;
             elif node.bl_idname == 'PowerNodeType':
-                string = powertemplate(node.name, in1, node.power, node.scale, node.shift)
+                string = powertemplate(node.name, bottoms[0], node.outputs[0].output_name, node.power, node.scale, node.shift)
                 dstring = string;
             elif node.bl_idname == 'ReductionNodeType':
-                string = reductiontemplate(node.name, in1, node.operation, node.axis, node.coeff)
+                string = reductiontemplate(node.name, bottoms[0], node.outputs[0].output_name, node.operation, node.axis, node.coeff)
                 dstring = string;
+            elif node.bl_idname == 'SliceNodeType':
+                tops = []
+                for output in node.outputs:
+                    tops.append(output.output_name)
+                slice_points = []
+                for slice_point in node.slice_points:
+                    slice_points.append(slice_point.slice_point)
+                string = slicetemplate(node.name, bottoms[0], tops, node.axis, slice_points)
             elif node.bl_idname == 'NodeReroute':
                 string = ''
                 dstring = ''

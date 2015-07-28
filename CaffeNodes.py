@@ -178,13 +178,32 @@ class ImageSocket(NodeSocket):
     bl_idname = 'ImageSocketType'
     # Label for nice name display
     bl_label = 'Image Socket'
-
     # Enum items list
 
     # Optional function for drawing the socket input value
     def draw(self, context, layout, node, text):
         layout.label(text)
 
+    # Socket color
+    def draw_color(self, context, node):
+        return (0.0, 1.0, 1.0, 0.5)
+
+
+class OutputSocket(NodeSocket):
+    # Description string
+    '''Custom node socket type'''
+    # Optional identifier string. If not explicitly defined, the python class name is used.
+    bl_idname = 'OutputSocketType'
+    # Label for nice name display
+    bl_label = 'Output Socket'
+    # Enum items list
+    
+    output_name = bpy.props.StringProperty(name='')
+    
+    # Optional function for drawing the socket input value
+    def draw(self, context, layout, node, text):
+        layout.prop(self, "output_name")
+    
     # Socket color
     def draw_color(self, context, node):
         return (0.0, 1.0, 1.0, 0.5)
@@ -282,6 +301,7 @@ class DataNode(Node, CaffeTreeNode):
     bl_label = 'data'
     # Icon identifier
     bl_icon = 'SOUND'
+    
     DBs = [
         ("LMDB", "LMDB", "Lmdb database"), ("Image files","Image files","Image files"),
            ("HDF5Data", "HDF5Data", "HDF5 Data")
@@ -349,10 +369,11 @@ class DataNode(Node, CaffeTreeNode):
           description="Get the path to the data",
           subtype='FILE_PATH'
           )
+
     # === Optional Functions ===
     def init(self, context):
-        self.outputs.new('ImageSocketType', "Image Stack")
-        self.outputs.new('LabelSocketType', "Label")
+        self.outputs.new('OutputSocketType', "Image Stack")
+        self.outputs.new('OutputSocketType', "Label")
 
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
@@ -401,6 +422,7 @@ class DataNode(Node, CaffeTreeNode):
         layout.prop(self, "usemeanfile")
         if self.usemeanfile:
             layout.prop(self,"meanfile")
+
     def draw_label(self):
         return "Data Node"
 
@@ -428,7 +450,7 @@ class PoolNode(Node, CaffeTreeNode):
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
-        self.outputs.new('ImageSocketType', "Output image")
+        self.outputs.new('OutputSocketType', "Output image")
 
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
@@ -483,7 +505,7 @@ class ConvNode(Node, CaffeTreeNode):
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
-        self.outputs.new('ImageSocketType', "Output image")
+        self.outputs.new('OutputSocketType', "Output image")
 
 
     # Copy function to initialize a copied node from an existing one.
@@ -552,7 +574,7 @@ class DeConvNode(Node, CaffeTreeNode):
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
-        self.outputs.new('ImageSocketType', "Output image")
+        self.outputs.new('OutputSocketType', "Output image")
 
 
     # Copy function to initialize a copied node from an existing one.
@@ -620,7 +642,7 @@ class FCNode(Node, CaffeTreeNode):
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
-        self.outputs.new('NAFlatSocketType', "Output Activations")
+        self.outputs.new('OutputSocketType', "Output Activations")
 
 
     # Copy function to initialize a copied node from an existing one.
@@ -662,7 +684,7 @@ class FlattenNode(Node, CaffeTreeNode):
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
-        self.outputs.new('AFlatSocketType', "Flat output")
+        self.outputs.new('OutputSocketType', "Flat output")
 
 
     # Copy function to initialize a copied node from an existing one.
@@ -728,7 +750,7 @@ class LRNNode(Node, CaffeTreeNode):
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
-        self.outputs.new('ImageSocketType', "Normalized output")
+        self.outputs.new('OutputSocketType', "Normalized output")
 
 
     # Copy function to initialize a copied node from an existing one.
@@ -766,7 +788,7 @@ class ActivationNode(Node, CaffeTreeNode):
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('NAFlatSocketType', "Linear input")
-        self.outputs.new('AFlatSocketType', "Non Linear output")
+        self.outputs.new('OutputSocketType', "Non Linear output")
 
 
     # Copy function to initialize a copied node from an existing one.
@@ -798,7 +820,7 @@ class ReLuNode(Node, CaffeTreeNode):
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
-        self.outputs.new('ImageSocketType', "Rectified output")
+        self.outputs.new('OutputSocketType', "Rectified output")
 
 
     # Copy function to initialize a copied node from an existing one.
@@ -830,7 +852,7 @@ class SMLossNode(Node, CaffeTreeNode):
     def init(self, context):
         self.inputs.new('NAFlatSocketType', "Input Probabilities")
         self.inputs.new('LabelSocketType', "Input Label")
-        self.outputs.new('LossSocketType', "Loss output")
+        self.outputs.new('OutputSocketType', "Loss output")
 
 
     # Copy function to initialize a copied node from an existing one.
@@ -863,7 +885,7 @@ class SCELossNode(Node, CaffeTreeNode):
     def init(self, context):
         self.inputs.new('NAFlatSocketType', "Input values")
         self.inputs.new('AFlatSocketType', "Input values 2")
-        self.outputs.new('LossSocketType', "Loss output")
+        self.outputs.new('OutputSocketType', "Loss output")
 
 
     # Copy function to initialize a copied node from an existing one.
@@ -896,7 +918,7 @@ class EULossNode(Node, CaffeTreeNode):
     def init(self, context):
         self.inputs.new('AFlatSocketType', "Input values")
         self.inputs.new('AFlatSocketType', "Input values 2")
-        self.outputs.new('LossSocketType', "Loss output")
+        self.outputs.new('OutputSocketType', "Loss output")
 
 
     # Copy function to initialize a copied node from an existing one.
@@ -929,7 +951,7 @@ class DropoutNode(Node, CaffeTreeNode):
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('NAFlatSocketType', "Input image")
-        self.outputs.new('NAFlatSocketType', "Output image")
+        self.outputs.new('OutputSocketType', "Output image")
 
 
     # Copy function to initialize a copied node from an existing one.
@@ -958,12 +980,12 @@ class ConcatNode(Node, CaffeTreeNode):
     bl_icon = 'SOUND'
 
     # === Custom Properties ===
-    dim = bpy.props.BoolProperty(default=True)
+    axis = bpy.props.IntProperty(default=1)
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
         self.inputs.new('ImageSocketType', "Input image")
-        self.outputs.new('ImageSocketType', "Output image")
+        self.outputs.new('OutputSocketType', "Output image")
 
 
     # Copy function to initialize a copied node from an existing one.
@@ -976,8 +998,7 @@ class ConcatNode(Node, CaffeTreeNode):
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
-        layout.label("Tick for channels, no tick for batch")
-        layout.prop(self, "dim")
+        layout.prop(self, "axis")
 
 
 class AccuracyNode(Node, CaffeTreeNode):
@@ -997,7 +1018,7 @@ class AccuracyNode(Node, CaffeTreeNode):
     def init(self, context):
         self.inputs.new('NAFlatSocketType', "Input class")
         self.inputs.new('LabelSocketType', "Input label")
-        self.outputs.new('LossSocketType', "Output Accuracy")
+        self.outputs.new('OutputSocketType', "Output Accuracy")
 
 
     # Copy function to initialize a copied node from an existing one.
@@ -1030,7 +1051,7 @@ class ArgMaxNode(Node, CaffeTreeNode):
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('LossSocketType', "Input loss")
-        self.outputs.new('LossSocketType', "Output Arg Max")
+        self.outputs.new('OutputSocketType', "Output Arg Max")
     
     
     # Copy function to initialize a copied node from an existing one.
@@ -1101,7 +1122,7 @@ class LogNode(Node, CaffeTreeNode):
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input data")
-        self.outputs.new('ImageSocketType', "Output data")
+        self.outputs.new('OutputSocketType', "Output data")
     
     
     # Copy function to initialize a copied node from an existing one.
@@ -1136,7 +1157,7 @@ class PowerNode(Node, CaffeTreeNode):
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input data")
-        self.outputs.new('ImageSocketType', "Output data")
+        self.outputs.new('OutputSocketType', "Output data")
     
     
     # Copy function to initialize a copied node from an existing one.
@@ -1177,7 +1198,7 @@ class ReductionNode(Node, CaffeTreeNode):
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input data")
-        self.outputs.new('LossSocketType', "Output data")
+        self.outputs.new('OutputSocketType', "Output data")
     
     
     # Copy function to initialize a copied node from an existing one.
@@ -1211,14 +1232,14 @@ class ReductionNode(Node, CaffeTreeNode):
            ("MEAN", "MEAN", "Mean")
     ]
         
-   # === Custom Properties ===
-   operation = bpy.props.EnumProperty(name='Operation', default='SUM', items=ops)
-   axis = bpy.props.IntProperty(name='Axis', default=0)
-   coeff = bpy.props.FloatProperty(name='Coeff', default=1)
-   # === Optional Functions ===
-   def init(self, context):
+    # === Custom Properties ===
+    operation = bpy.props.EnumProperty(name='Operation', default='SUM', items=ops)
+    axis = bpy.props.IntProperty(name='Axis', default=0)
+    coeff = bpy.props.FloatProperty(name='Coeff', default=1)
+    # === Optional Functions ===
+    def init(self, context):
        self.inputs.new('ImageSocketType', "Input data")
-       self.outputs.new('LossSocketType', "Output data")
+       self.outputs.new('OutputSocketType', "Output data")
 
 
     # Copy function to initialize a copied node from an existing one.
@@ -1234,6 +1255,61 @@ class ReductionNode(Node, CaffeTreeNode):
         layout.prop(self, "operation")
         layout.prop(self, "axis")
         layout.prop(self, "coeff")
+
+class slice_point_p_g(bpy.types.PropertyGroup):
+    slice_point = bpy.props.IntProperty(min=0)
+
+    def draw(self, context, layout):
+        layout.prop(self, "slice_point")
+
+
+class SliceNode(Node, CaffeTreeNode):
+    # === Basics ===
+    # Description string
+    '''Slice Node'''
+    # Optional identifier string. If not explicitly defined, the python class name is used.
+    bl_idname = 'SliceNodeType'
+    # Label for nice name display
+    bl_label = 'Slice Node'
+    # Icon identifier
+    bl_icon = 'SOUND'
+        
+    # === Custom Properties ===
+    axis = bpy.props.IntProperty(name='Axis', default=0)
+    slice_points = bpy.props.CollectionProperty(type=slice_point_p_g)
+    
+    def update_slices(self, context):
+        while len(self.slice_points) < self.num_of_slices:
+            self.slice_points.add()
+            self.outputs.new('OutputSocketType', "Out%i" % len(self.slice_points))
+        while len(self.slice_points) > self.num_of_slices:
+            self.slice_points.remove(len(self.slice_points)-1)
+            self.outputs.remove(self.outputs[len(self.slice_points)+1])
+    
+    num_of_slices = bpy.props.IntProperty(default=1, min=1, update=update_slices)
+
+    # === Optional Functions ===
+    def init(self, context):
+        self.inputs.new('ImageSocketType', "Input data")
+        self.outputs.new('OutputSocketType', "Out1")
+        self.outputs.new('OutputSocketType', "Out2")
+        self.slice_points.add()
+
+    # Copy function to initialize a copied node from an existing one.
+    def copy(self, node):
+        print("Copying from node ", node)
+
+    # Free function to clean up on removal.
+    def free(self):
+        print("Removing node ", self, ", Goodbye!")
+
+    # Additional buttons displayed on the node.
+    def draw_buttons(self, context, layout):
+        layout.prop(self, "axis")
+        layout.prop(self, "num_of_slices")
+        
+        for slice_point in self.slice_points:
+            slice_point.draw(context, layout)
 
 class SolverNode(Node, CaffeTreeNode):
 
@@ -1375,7 +1451,8 @@ node_categories = [
         NodeItem("ConvNodeType"),
         NodeItem("DeConvNodeType"),
         NodeItem("LRNNodeType"),
-        NodeItem("ConcatNodeType")
+        NodeItem("ConcatNodeType"),
+        NodeItem("SliceNodeType")
     ]),
     CaffeNodeCategory("NNODES", "Neuron Nodes", items=[
         # our basic node
@@ -1411,6 +1488,8 @@ node_categories = [
 
 
 def register():
+    bpy.utils.register_class(slice_point_p_g)
+    bpy.utils.register_class(OutputSocket)
     bpy.utils.register_class(CaffeTree)
     bpy.utils.register_class(DataNode)
     bpy.utils.register_class(DropoutNode)
@@ -1439,6 +1518,7 @@ def register():
     bpy.utils.register_class(LogNode)
     bpy.utils.register_class(PowerNode)
     bpy.utils.register_class(ReductionNode)
+    bpy.utils.register_class(SliceNode)
 
     nodeitems_utils.register_node_categories("CUSTOM_NODES", node_categories)
 
