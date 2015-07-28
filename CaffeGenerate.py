@@ -272,19 +272,19 @@ def datatemplate(name, top1, top2, batchsize, trainpath, testpath, shuffle, supe
 
 
 def pooltemplate(name, kernel, stride, mode, bottom, top):
-    string = \
-        'layer {\n\
-        name: "%s"\n\
-        type: "Pooling"\n\
-        bottom: "%s"\n\
-        top: "%s"\n\
-        pooling_param {\n\
-        pool: %s\n\
-        kernel_size: %i\n\
-        stride: %i\n\
-        }\n\
-        }\n' \
-        % (name, bottom, top, mode, kernel, stride)
+    string = '''\
+layer {
+    name: "%s"
+    type: "Pooling"
+    bottom: "%s"
+    top: "%s"
+    pooling_param {
+        pool: %s
+        kernel_size: %i
+        stride: %i
+    }
+}
+''' % (name, bottom, top, mode, kernel, stride)
     return string
 
 
@@ -349,81 +349,82 @@ def FCtemplate(node, name, outputs, bottom, top, sparse, weight_filler, bfv, flr
 
 
 def flattentemplate(name, bottom, top):
-    string = \
-        'layer {\n\
-        bottom: "%s"\n\
-        top: "%s"\n\
-        name: "%s"\n\
-        type: "Flatten"\n\
-        }\n' \
-        % (bottom, top, name)
+    string = '''\
+layer {
+    bottom: "%s"
+    top: "%s"
+    name: "%s"
+    type: "Flatten"
+}
+''' % (bottom, top, name)
     return string
 
 
 def silencetemplate(name, bottom):
-    string = \
-        'layer {\n\
-        bottom: "%s"\n\
-        name: "%s"\n\
-        type: "Silence"\n\
-        }\n' \
-        % (bottom, name)
+    string = '''\
+layer {
+    bottom: "%s"
+    name: "%s"
+    type: "Silence"
+}
+''' % (bottom, name)
     return string
 
 
 def dropouttemplate(name, bottom, top, dropout):
-    string = \
-        'layer {\n\
-    name: "%s"\n\
-    type: "Dropout"\n\
-    bottom: "%s"\n\
-    top: "%s"\n\
-    dropout_param {\n\
-    dropout_ratio: %f\n\
-    }\n\
-    }\n' % (name, bottom, top, dropout)
+    string = '''\
+layer {
+    name: "%s"
+    type: "Dropout"
+    bottom: "%s"
+    top: "%s"
+    dropout_param {
+        dropout_ratio: %f
+    }
+}
+''' % (name, bottom, top, dropout)
     return string
 
 
 def LRNtemplate(name, bottom, top, alpha, beta, size, mode):
-    string = \
-        'layer {\n\
-        name: "%s"\n\
-        type: "LRN"\n\
-        bottom: "%s"\n\
-        top: "%s"\n\
-        lrn_param {\n\
-        local_size: %i\n\
-        alpha: %f\n\
-        beta: %f\n\
-        norm_region: %s\n\
-        }\n\
-        }\n' \
-        % (name, bottom, top, size, alpha, beta, mode)
+    string = '''\
+layer {
+    name: "%s"
+    type: "LRN"
+    bottom: "%s"
+    top: "%s"
+    lrn_param {
+        local_size: %i
+        alpha: %f
+        beta: %f
+        norm_region: %s
+    }
+}
+''' % (name, bottom, top, size, alpha, beta, mode)
     return string
 
 
 def NLtemplate(name, bottom, top, mode):
-    string = \
-        'layer {\n\
-        name: "%s"\n\
-        bottom: "%s"\n\
-        top: "%s"\n\
-        type: %s\n\
-        }\n' \
-        % (name, bottom, top, mode)
+    string = '''\
+layer {
+    name: "%s"
+    bottom: "%s"
+    top: "%s"
+    type: %s
+}
+''' % (name, bottom, top, mode)
     return string
 
 
 def Relutemplate(bottom, top, name, Negativeg):
-    string = \
-        'layer {\n\
-        name: "%s"\n\
-        type: "ReLU"\n\
-        bottom: "%s"\n\
-        top: "%s"\n\
-        }\n' \
-        % (name, bottom, top)
+    string = '''\
+layer {
+    name: "%s"
+    type: "ReLU"
+    bottom: "%s"
+    top: "%s"
+}
+''' % (name, bottom, top)
     return string
     
 def PRelutemplate(node, bottom):    
@@ -442,157 +443,158 @@ def PRelutemplate(node, bottom):
     return string
 
 def SMtemplate(name, bottom1, bottom2, top, w):
-    string = \
-        'layer {\n\
-        name: "%s"\n\
-        type: "SoftmaxWithLoss"\n\
-        bottom: "%s"\n\
-        bottom: "%s"\n\
-        top: "%s"\n\
-        loss_weight: %f\n\
-        }\n' \
-        % (name, bottom1, bottom2, top, w)
+    string = '''\
+layer {
+    name: "%s"
+    type: "SoftmaxWithLoss"
+    bottom: "%s"
+    bottom: "%s"
+    top: "%s"
+    loss_weight: %f
+}
+''' % (name, bottom1, bottom2, top, w)
     return string
 
 
 def SCEtemplate(name, bottom1, bottom2, top, w):
-    string = \
-        'layer {\n\
-        name: "%s"\n\
-        type: "SigmoidCrossEntropyLoss"\n\
-        bottom: "%s"\n\
-        bottom: "%s"\n\
-        top: "%s"\n\
-        loss_weight: %f\n\
-        }\n' \
-        % (name, bottom1, bottom2, top, w)
+    string = '''\
+layer {
+    name: "%s"
+    type: "SigmoidCrossEntropyLoss"
+    bottom: "%s"
+    bottom: "%s"
+    top: "%s"
+    loss_weight: %f
+}
+''' % (name, bottom1, bottom2, top, w)
     return string
 
 
 def EUtemplate(name, bottom1, bottom2, top, w):
-    string = \
-        'layer {\n\
-        name: "%s"\n\
-        type: "EuclideanLoss"\n\
-        bottom: "%s"\n\
-        bottom: "%s"\n\
-        top: "%s"\n\
-        loss_weight: %f\n\
-        }\n' \
-        % (name, bottom1, bottom2, top, w)
+    string = '''\
+layer {
+    name: "%s"
+    type: "EuclideanLoss"
+    bottom: "%s"
+    bottom: "%s"
+    top: "%s"
+    loss_weight: %f
+}
+''' % (name, bottom1, bottom2, top, w)
     return string
 
 
 def Concattemplate(name, bottom1, bottom2, top, axis):
-    string = \
-        'layer {\n\
-        name: "%s"\n\
-        bottom: "%s"\n\
-        bottom: "%s"\n\
-        top: "%s"\n\
-        type: "Concat"\n\
-        concat_param {\n\
-        axis: %i\n\
-        }\n\
-        }\n' \
-        % (name, bottom1, bottom2, top, axis)
+    string = '''\
+layer {
+    name: "%s"
+    bottom: "%s"
+    bottom: "%s"
+    top: "%s"
+    type: "Concat"
+    concat_param {
+        axis: %i
+    }
+}
+''' % (name, bottom1, bottom2, top, axis)
     return string
 
 
 def accuracytemplate(name, bottom, top, Testonly):
     if Testonly == 1:
-        Testonly = 'include { \n\
-            phase: TEST \n\
-            }'
+        Testonly = '''\
+    include {
+        phase: TEST
+    }'''
     else:
         Testonly = ''
-    string = \
-        'layer {\n\
-        name: "%s"\n\
-        type: "Accuracy"\n\
-        bottom: "%s"\n\
-        bottom: "label"\n\
-        top: "%s"\n\
-        %s\n\
-        }\n' \
-        % (name, bottom, top, Testonly)
+    string = '''\
+layer {
+    name: "%s"
+    type: "Accuracy"
+    bottom: "%s"
+    bottom: "label"
+    top: "%s"
+%s
+}
+''' % (name, bottom, top, Testonly)
     return string
 
 def argmaxtemplate(name, bottom, top, OutMaxVal, TopK):
-    string = \
-        'layer {\n\
-        name: "%s"\n\
-        type: "ARGMAX"\n\
-        bottom: "%s"\n\
-        top: "%s"\n\
-        argmax_param {\n\
-        out_max_val: %i\n\
-        top_k: %i\n\
-        }\n\
-        }\n' \
-        % (name, bottom, top, OutMaxVal, TopK)
+    string = '''\
+layer {
+    name: "%s"
+    type: "ArgMax"
+    bottom: "%s"
+    top: "%s"
+    argmax_param {
+        out_max_val: %i
+        top_k: %i
+    }
+}
+''' % (name, bottom, top, OutMaxVal, TopK)
     return string
 
 def hdf5outputtemplate(name, bottom, filename):
-    string = \
-        'layer {\n\
-        name: "%s"\n\
-        type: "HDF5Output"\n\
-        bottom: "%s"\n\
-        hdf5_output_param {\n\
-        file_name: "%s"\n\
-        }\n\
-        }\n' \
-        % (name, bottom, filename)
+    string = '''\
+layer {
+    name: "%s"
+    type: "HDF5Output"
+    bottom: "%s"
+    hdf5_output_param {
+        file_name: "%s"
+    }
+}
+''' % (name, bottom, filename)
     return string
 
 
 def logtemplate(name, bottom, top, scale, shift, base):
-    string = \
-        'layer {\n\
-        name: "%s"\n\
-        type: "Log"\n\
-        bottom: "%s"\n\
-        top: "%s"\n\
-        log_param {\n\
-        scale: %f\n\
-        shift: %f\n\
-        base: %f\n\
-        }\n\
-        }\n' \
-        % (name, bottom, top, scale, shift, base)
+    string = '''\
+layer {
+    name: "%s"
+    type: "Log"
+    bottom: "%s"
+    top: "%s"
+    log_param {
+        scale: %f
+        shift: %f
+        base: %f
+    }
+}
+''' % (name, bottom, top, scale, shift, base)
     return string
 
 def powertemplate(name, bottom, top, power, scale, shift):
-    string = \
-        'layer {\n\
-        name: "%s"\n\
-        type: "Power"\n\
-        bottom: "%s"\n\
-        top: "%s"\n\
-        power_param {\n\
-        power: %f\n\
-        scale: %f\n\
-        shift: %f\n\
-        }\n\
-        }\n' \
-        % (name, bottom, top, power, scale, shift)
+    string = '''\
+layer {
+    name: "%s"
+    type: "Power"
+    bottom: "%s"
+    top: "%s"
+    power_param {
+        power: %f
+        scale: %f
+        shift: %f
+    }
+}
+''' % (name, bottom, top, power, scale, shift)
     return string
 
 def reductiontemplate(name, bottom, top, operation, axis, coeff):
-    string = \
-        'layer {\n\
-        name: "%s"\n\
-        type: "Reduction"\n\
-        bottom: "%s"\n\
-        top: "%s"\n\
-        reduction_param { \n\
-        operation: %s\n\
-        axis: %i\n\
-        coeff: %f\n\
-        }\n\
-        }\n' \
-        % (name, bottom, top, operation, axis, coeff)
+    string = '''\
+layer {
+    name: "%s"
+    type: "Reduction"
+    bottom: "%s"
+    top: "%s"
+    reduction_param {
+        operation: %s
+        axis: %i
+        coeff: %f
+    }
+}
+''' % (name, bottom, top, operation, axis, coeff)
     return string
 
 def slicetemplate(name, bottom, tops, axis, slice_points):
