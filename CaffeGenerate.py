@@ -9,8 +9,48 @@ import random
 import time
 import os
 
-
-def convtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, top, bfv, flr, blr, fdr, bdr, std, weight_filler,nonsquare=0,x=0,y=0):
+def getFillerString(node, ftype):
+    if ftype == 'none':
+        if node.type == 'constant':
+            fillerString = 'value: %f\n' % (node.value)
+        elif node.type == 'xavier' or node.type == 'msra':
+            fillerString = 'variance_norm: %s\n' % (node.variance_norm)
+        elif node.type == 'gaussian':
+            fillerString = 'mean: %f\nstd: %f\n' % (node.mean, node.std)    
+            if node.sparsity:
+                fillerString = fillerString + 'sparse: %i\n' % (node.sparse)    
+        elif node.type == 'uniform':
+            fillerString = 'min: %f\nmax: %f\n' % (node.min, node.max)
+    elif ftype == 'weight':
+        if node.w_type == 'constant':
+            fillerString = 'value: %f\n' % (node.w_value)
+        elif node.w_type == 'xavier' or node.w_type == 'msra':
+            fillerString = 'variance_norm: %s\n' % (node.w_variance_norm)
+        elif node.w_type == 'gaussian':
+            fillerString = 'mean: %f\nstd: %f\n' % (node.w_mean, node.w_std)    
+            if node.w_sparsity:
+                fillerString = fillerString + 'sparse: %i\n' % (node.w_sparse)    
+        elif node.w_type == 'uniform':
+            fillerString = 'min: %f\nmax: %f\n' % (node.w_min, node.w_max)
+    elif ftype == 'bias':
+        if node.b_type == 'constant':
+            fillerString = 'value: %f\n' % (node.b_value)
+        elif node.b_type == 'xavier' or node.b_type == 'msra':
+            fillerString = 'variance_norm: %s\n' % (node.b_variance_norm)
+        elif node.b_type == 'gaussian':
+            fillerString = 'mean: %f\nstd: %f\n' % (node.b_mean, node.b_std)    
+            if node.b_sparsity:
+                fillerString = fillerString + 'sparse: %i\n' % (node.b_sparse)    
+        elif node.b_type == 'uniform':
+            fillerString = 'min: %f\nmax: %f\n' % (node.b_min, node.b_max)
+    
+    fillerString = 'type: "%s"\n%s' % (node.type, fillerString)
+    return fillerString
+    
+def convtemplate(node,name, OutputLs, Padding, kernelsize, Stride, bottom, bfv, flr, blr, fdr, bdr, std, weight_filler,nonsquare=0,x=0,y=0):
+    w_fillerString = getFillerString(node, 'weight')
+    b_fillerString = getFillerString(node, 'bias')
+    
     if not nonsquare:
         kernelstring = 'kernel_size: %i'%kernelsize
     else:
@@ -33,23 +73,24 @@ def convtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, top, bfv, 
         %s\n\
         stride: %i\n\
         weight_filler {\n\
-        type: "%s"\n\
-        std: %f\n\
+        %s\
         }\n\
         bias_filler {\n\
-        type: "constant"\n\
-        value: %f\n\
+        %s\
         }\n\
         }\n\
         bottom: "%s"\n\
         top: "%s"\n\
         }\n' \
-        % (name, flr, fdr, blr, bdr, OutputLs, Padding, kernelstring, Stride, weight_filler, std, bfv, bottom, top)
+        % (name, flr, fdr, blr, bdr, OutputLs, Padding, kernelstring, Stride, w_fillerString,b_fillerString, bottom, top)
     tb = [name, bottom]
     return string
 
 
-def deconvtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, top, bfv, flr, blr, fdr, bdr, std, weight_filler,nonsquare=0,x=0,y=0):
+def deconvtemplate(node,name, OutputLs, Padding, kernelsize, Stride, bottom,top, bfv, flr, blr, fdr, bdr, std, weight_filler,nonsquare=0,x=0,y=0):
+    w_fillerString = getFillerString(node, 'weight')
+    b_fillerString = getFillerString(node, 'bias')
+    
     if not nonsquare:
         kernelstring = 'kernel_size: %i'%kernelsize
     else:
@@ -72,24 +113,22 @@ def deconvtemplate(name, OutputLs, Padding, kernelsize, Stride, bottom, top, bfv
         %s\n\
         stride: %i\n\
         weight_filler {\n\
-        type: "%s"\n\
-        std: %f\n\
+        %s\
         }\n\
         bias_filler {\n\
-        type: "constant"\n\
-        value: %f\n\
+        %s\
         }\n\
         }\n\
         bottom: "%s"\n\
         top: "%s"\n\
         }\n' \
-        % (name, flr, fdr, blr, bdr, OutputLs, Padding, kernelstring, Stride, weight_filler, std, bfv, bottom, top)
+        % (name, flr, fdr, blr, bdr, OutputLs, Padding, kernelstring, Stride, w_fillerString, b_fillerString, bottom, top)
     tb = [name, bottom]
     return string
 
 
 def datatemplate(name, top1, top2, batchsize, trainpath, testpath, shuffle, supervised, dbtype, meanused, imsize, maxval=255, mirror=0,
-                 meanfile=0, silout=0, channels=3):
+                meanfile=0, silout=0, channels=3):
     sf = 1.0 / (maxval + 1)
     if channels == 1:
         iscolour = 'is_color: 1' ### When single channel
@@ -249,7 +288,23 @@ def pooltemplate(name, kernel, stride, mode, bottom, top):
     return string
 
 
-def FCtemplate(name, outputs, bottom, top, sparse, weight_filler, bfv, flr, blr, fdr, bdr, std, sparsity):
+def mvntemplate(name, bottom, normalize_variance, across_channels, eps):
+    string = \
+        'layer {\n\
+        name: "%s"\n\
+        type: "MVN"\n\
+        bottom: "%s"\n\
+        top: "%s"\n\
+        mvn_param  {\n\
+        normalize_variance: %s\n\
+        across_channels: %s\n\
+        eps: %f\n\
+        }\n\
+        }\n' \
+        % (name, bottom, name, normalize_variance, across_channels, eps)
+    return string
+    
+def FCtemplate(node, name, outputs, bottom, top, sparse, weight_filler, bfv, flr, blr, fdr, bdr, std, sparsity):
     if sparsity == 1:
         sparsestring = 'sparse: %i' % sparse
     else:
@@ -370,7 +425,21 @@ def Relutemplate(bottom, top, name, Negativeg):
         }\n' \
         % (name, bottom, top)
     return string
-
+    
+def PRelutemplate(node, bottom):    
+    fillerString = getFillerString(node,'none')    
+    string = \
+        'layer {\n\
+        name: "%s"\n\
+        type: "PReLU"\n\
+        bottom: "%s"\n\
+        top: "%s"\n\
+        filler {\n\
+        %s\
+        }\n\
+        }\n' \
+        % (node.name, bottom, node.name, fillerString)
+    return string
 
 def SMtemplate(name, bottom1, bottom2, top, w):
     string = \
@@ -549,7 +618,7 @@ def slicetemplate(name, bottom, tops, axis, slice_points):
     return string
 
 def solvertemplate(type, learningrate, testinterval, testruns, maxiter, displayiter, snapshotiter, snapshotname,
-                   snapshotpath, configpath, solvername, itersize, solver='GPU'):
+                snapshotpath, configpath, solvername, itersize, solver='GPU'):
     snapshotprefix = snapshotpath + snapshotname
     netpath = configpath + '%s_train_test.prototxt' % solvername
     if type == 'ADAGRAD':
@@ -589,7 +658,7 @@ def solvertemplate(type, learningrate, testinterval, testruns, maxiter, displayi
         snapshot_prefix: "%s"\n\
         solver_mode: %s\n' \
         % (netpath, testruns, testinterval, learningrate, displayiter, maxiter, itersize, snapshotiter, snapshotprefix,
-           solver)
+        solver)
     solverstring = genericstring + tsstring
     return solverstring
 
@@ -651,32 +720,33 @@ class Solve(bpy.types.Operator):
             if node.bl_idname == 'DataNodeType':
                 if node.dbtype == 'LMDB':
                     string = datatemplate(node.name, node.outputs[0].output_name, node.outputs[1].output_name, node.batchsize,
-                                          node.trainpath, node.testpath, node.shuffle, node.supervised,
-                                          node.dbtype, node.usemeanfile, node.imsize, node.maxval, node.mirror,
-                                          node.meanfile, node.silout)
+                                        node.trainpath, node.testpath, node.shuffle, node.supervised,
+                                        node.dbtype, node.usemeanfile, node.imsize, node.maxval, node.mirror,
+                                        node.meanfile, node.silout)
                     dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
                 elif node.dbtype == 'Image files':
                     string = datatemplate(node.name, node.outputs[0].output_name, node.outputs[1].output_name,
-                                          node.batchsize, node.trainfile, node.testfile, node.shuffle, node.supervised,
-                                          node.dbtype, node.usemeanfile, node.imsize, node.maxval, node.mirror,
-                                          node.meanfile, node.silout, channels=node.channels)
+                                        node.batchsize, node.trainfile, node.testfile, node.shuffle, node.supervised,
+                                        node.dbtype, node.usemeanfile, node.imsize, node.maxval, node.mirror,
+                                        node.meanfile, node.silout, channels=node.channels)
                     dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
                 elif node.dbtype == 'HDF5Data':
                     string = datatemplate(node.name, node.outputs[0].output_name, node.outputs[1].output_name,
-                                          node.batchsize, node.trainHDF5, node.trainHDF5, node.shuffle, node.supervised,
-                                          node.dbtype, node.usemeanfile, node.imsize, node.maxval, node.mirror,
-                                          node.meanfile, node.silout, channels=node.channels)
+                                        node.batchsize, node.trainHDF5, node.trainHDF5, node.shuffle, node.supervised,
+                                        node.dbtype, node.usemeanfile, node.imsize, node.maxval, node.mirror,
+                                        node.meanfile, node.silout, channels=node.channels)
                     dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
             elif node.bl_idname == 'PoolNodeType':
                 string = pooltemplate(node.name, node.kernel, node.stride, node.mode, bottoms[0], node.outputs[0].output_name)
+                dstring = string                
                 dstring = string
             elif node.bl_idname == 'ConvNodeType':
-                string = convtemplate(node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride, bottoms[0], node.outputs[0].output_name,
-                                      node.biasfill, node.filterlr, node.biaslr, node.filterdecay, node.biasdecay,
-                                      node.std, node.weights,nonsquare=node.nonsquare,x=node.kernelsizex,y=node.kernelsizey)
+                string = convtemplate(node,node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride, bottoms[0], node.outputs[0].output_name,
+                                    node.biasfill, node.filterlr, node.biaslr, node.filterdecay, node.biasdecay,
+                                    node.std, node.weights,nonsquare=node.nonsquare,x=node.kernelsizex,y=node.kernelsizey)
                 dstring = string
             elif node.bl_idname == 'DeConvNodeType':
-                string = deconvtemplate(node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride,
+                string = deconvtemplate(node,node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride,
                                         bottoms[0], node.outputs[0].output_name,
                                         node.biasfill, node.filterlr, node.biaslr, node.filterdecay, node.biasdecay,
                                         node.std, node.weights,nonsquare=node.nonsquare,x=node.kernelsizex,y=node.kernelsizey)
@@ -701,6 +771,9 @@ class Solve(bpy.types.Operator):
             elif node.bl_idname == 'ReluNodeType':
                 string = Relutemplate(bottoms[0], node.outputs[0].output_name, node.name, node.Negativeg)
                 dstring = string
+            elif node.bl_idname == 'PReluNodeType':
+                string = PRelutemplate(node, in1)
+                dstring = string    
             elif node.bl_idname == 'DropoutNodeType':
                 string = dropouttemplate(node.name, bottoms[0], node.outputs[0].output_name, node.fac)
                 dstring = string
@@ -747,11 +820,11 @@ class Solve(bpy.types.Operator):
                 dstring = ''
             elif node.bl_idname == 'SolverNodeType':
                 solverstring = solvertemplate(node.solver, node.learningrate, node.testinterval, node.testruns,
-                                              node.maxiter,
-                                              node.displayiter, node.snapshotiter, node.solvername, node.snapshotpath,
-                                              node.configpath, node.solvername, node.accumiters, solver=node.compmode)
+                                            node.maxiter,
+                                            node.displayiter, node.snapshotiter, node.solvername, node.snapshotpath,
+                                            node.configpath, node.solvername, node.accumiters, solver=node.compmode)
                 scriptstring = scripttemplate(node.caffexec, node.configpath, node.solvername, node.gpus,
-                                              solver=node.compmode)
+                                            solver=node.compmode)
                 configpath = node.configpath
                 solvername = node.solvername
             elif string == 0:
