@@ -1087,36 +1087,12 @@ class PReLuNode(Node, CaffeTreeNode):
 
     # === Custom Properties ===
     channel_shared = bpy.props.BoolProperty(default=False)
-    
-    # === Custom Filler Properties ===    
-    modes = [
-        ("constant", "constant", "Constant val"),
-        ("uniform", "uniform", "Uniform dist"),
-        ("gaussian", "gaussian", "Gaussian dist"),
-        ("positive_unitball", "positive_unitball", "Positive unit ball dist"),
-        ("xavier", "xavier", "Xavier dist"),
-        ("msra", "msra", "MSRA dist"),
-        ("bilinear", "bilinear", "Bi-linear upsample weights")
-    ]
-    vnormtypes = [
-        ("FAN_IN", "FAN_IN", "Constant val"),
-        ("FAN_OUT", "FAN_OUT", "Uniform dist"),
-        ("AVERAGE", "AVERAGE", "Gaussian dist")
-    ]    
-    type = bpy.props.EnumProperty(name='Weight fill type', default='xavier', items=modes)
-    value = bpy.props.FloatProperty(default=0.0, soft_max=1000.0, min=-1000.0)
-    min = bpy.props.FloatProperty(default=0.0, soft_max=1000.0, min=-1000.0)
-    max = bpy.props.FloatProperty(default=1.0, soft_max=1000.0, min=-1000.0)
-    mean = bpy.props.FloatProperty(default=0.0, soft_max=1000.0, min=-1000.0)
-    std = bpy.props.FloatProperty(default=1.0, soft_max=1000.0, min=-1000.0)
-    variance_norm = bpy.props.EnumProperty(name='Weight variance norm', default='FAN_IN', items=vnormtypes)
-    sparse = bpy.props.IntProperty(default=100, min=1, max=500)
-    sparsity = bpy.props.BoolProperty(default=False)
+    filler = bpy.props.PointerProperty(type=filler_p_g)
     
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
-        self.outputs.new('ImageSocketType', "Rectified output")
+        self.outputs.new('OutputSocketType', "Rectified output")
 
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
@@ -1129,22 +1105,7 @@ class PReLuNode(Node, CaffeTreeNode):
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
         layout.prop(self, "channel_shared")
-        
-        # === Custom filler layout ===    
-        layout.prop(self,"type")
-        if self.type == 'constant':
-            layout.prop(self,"value")
-        elif self.type == 'xavier' or self.type == 'msra':
-            layout.prop(self,"variance_norm")
-        elif self.type == 'gaussian':
-            layout.prop(self,"mean")
-            layout.prop(self,"std")
-            layout.prop(self, "sparsity")
-            if self.sparsity:
-                layout.prop(self, "sparse")
-        elif self.type == 'uniform':
-            layout.prop(self,'min')
-            layout.prop(self,'max')    
+        self.filler.draw(context, layout)
         self.draw_extra_params(context, layout)    
                 
 class SMLossNode(Node, CaffeTreeNode):

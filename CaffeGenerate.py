@@ -9,6 +9,10 @@ import random
 import time
 import os
 
+tab = '    '
+tab2 = tab + tab
+tab3 = tab2 + tab
+
 def getFillerString(filler, name):
     fillerString = tab3 + 'type: "%s"\n' % filler.type
     
@@ -68,46 +72,6 @@ def conv_template(node):
 ''' % (node.num_output, node.bias_term, padding_string, kernel_string, stride_string, weight_filler_string, bias_filler_string)
     return string
 
-
-def deconvtemplate(node,name, OutputLs, Padding, kernelsize, Stride, bottom,top, bfv, flr, blr, fdr, bdr, std, weight_filler,nonsquare=0,x=0,y=0):
-    w_fillerString = getFillerString(node, 'weight')
-    b_fillerString = getFillerString(node, 'bias')
-    
-    if not nonsquare:
-        kernelstring = 'kernel_size: %i'%kernelsize
-    else:
-        kernelstring = 'kernel_h: %i\nkernel_w: %i' %(y,x)
-    string = \
-        'layer {\n\
-        name: "%s"\n\
-        type: "Deconvolution"\n\
-        param {\n\
-        lr_mult: %i\n\
-        decay_mult: %i\n\
-        }\n\
-        param {\n\
-        lr_mult: %i\n\
-        decay_mult: %i\n\
-        }\n\
-        convolution_param {\n\
-        num_output: %i\n\
-        pad: %i\n\
-        %s\n\
-        stride: %i\n\
-        weight_filler {\n\
-        %s\
-        }\n\
-        bias_filler {\n\
-        %s\
-        }\n\
-        }\n\
-        bottom: "%s"\n\
-        top: "%s"\n\
-        }\n' \
-        % (name, flr, fdr, blr, bdr, OutputLs, Padding, kernelstring, Stride, w_fillerString, b_fillerString, bottom, top)
-    tb = [name, bottom]
-    return string
-
 def data_param_template(node, source):
     string = '''\
     data_param {
@@ -161,23 +125,6 @@ def hdf5_data_template(node, source):
 
     return string
 
-
-#def pooltemplate(name, kernel, stride, mode, bottom, top):
-#    string = '''\
-#layer {
-#    name: "%s"
-#    type: "Pooling"
-#    bottom: "%s"
-#    top: "%s"
-#    pooling_param {
-#        pool: %s
-#        kernel_size: %i
-#        stride: %i
-#    }
-#}
-#''' % (name, bottom, top, mode, kernel, stride)
-#    return string
-
 def pool_template(node):
     string = '''\
     pooling_param {
@@ -189,6 +136,7 @@ def pool_template(node):
 
     return string
 
+# TODO: Finish MVN
 def mvntemplate(name, bottom, normalize_variance, across_channels, eps):
     string = \
         'layer {\n\
@@ -221,21 +169,14 @@ def FC_template(node):
 
     return string
 
-
-#TODO: Add to new version.
-def PRelutemplate(node, bottom):    
-    fillerString = getFillerString(node,'none')    
-    string = \
-        'layer {\n\
-        name: "%s"\n\
-        type: "PReLU"\n\
-        bottom: "%s"\n\
-        top: "%s"\n\
-        filler {\n\
-        %s\
-        }\n\
-        }\n' \
-        % (node.name, bottom, node.name, fillerString)
+def PReLU_template(node):
+    filler_string = getFillerString(node.filler, 'filler')
+    string = '''\
+    prelu_param {
+        channel_shared: %i
+%s
+    }
+''' % (node.channel_shared, filler_string)
     return string
 
 
@@ -381,11 +322,6 @@ def scripttemplate(caffepath, configpath, solvername, gpus, solver):
     caffestring = caffepath + 'caffe'
     string = '#!/usr/bin/env sh \n %s train --solver=%s %s' % (caffestring, solverstring, extrastring)
     return string
-
-
-tab = '    '
-tab2 = tab + tab
-tab3 = tab2 + tab
 
 def loss_weight_template(loss_weight):
     return tab + 'loss_weight: %f' % loss_weight
@@ -581,27 +517,20 @@ class Solve(bpy.types.Operator):
             elif node.bl_idname == 'FCNodeType':
                 special_params.append(FC_template(node))
             elif node.bl_idname == 'FlattenNodeType':
-#                string = layer_template(node.name, "Flatten", tops, bottoms, params, [], include_in)
-#                string = flattentemplate(node.name, bottoms[0], node.outputs[0].output_name)
                 dstring = string
             elif node.bl_idname == 'SilenceNodeType':
-#                string = layer_template(node.name, "Silence", tops, bottoms, params, [], include_in)
-#                string = silencetemplate(node.name, bottoms[0])
                 dstring = string
             elif node.bl_idname == 'LRNNodeType':
                 special_params.append(LRNtemplate(node))
-                dstring = string
             elif node.bl_idname == 'AcNodeType':
                 node.type = node.mode
             elif node.bl_idname == 'ReluNodeType':
                 special_params.append(Relutemplate(node))
-                dstring = string
             elif node.bl_idname == 'PReluNodeType':
-                string = PRelutemplate(node, in1)
+                special_params.append(PReLU_template(node))
                 dstring = string
             elif node.bl_idname == 'DropoutNodeType':
                 special_params.append(dropouttemplate(node))
-                dstring = string
             elif node.bl_idname == 'SMLossNodeType':
                 special_params.append(loss_weight_template(node.w))
                 dstring = ''
