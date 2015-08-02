@@ -474,6 +474,36 @@ def dropouttemplate(node):
     ''' % (node.dropout_ratio)
     return string
 
+class Vertex():
+    pass
+
+def reorder(graph):
+    res_string = []
+    res_dstring = []
+    while len(graph) > 0:
+        curr = min(graph, key = lambda x: len(x.bottoms))
+#        print(curr.string)
+
+        if len(curr.bottoms) != 0:
+            print('Cycle in graph?!')
+        
+        res_string.append(curr.string)
+        res_dstring.append(curr.dstring)
+        
+        for item in graph:
+#            print(item.bottoms)
+            for top in curr.tops:
+                try:
+#                    print(item.bottoms)
+                    item.bottoms.remove(top)
+#                    print("Removed")
+                except:
+                    pass
+#            print("---")
+#            print(item.bottoms)
+#            print("-----")
+        graph.remove(curr)
+    return res_string, res_dstring
 
 class Solve(bpy.types.Operator):
     """Generate Caffe solver"""  # blender will use this as a tooltip for menu items and buttons.
@@ -482,31 +512,22 @@ class Solve(bpy.types.Operator):
     bl_options = {'REGISTER'}  # enable undo for the operator.
 
     def execute(self, context):  # execute() is called by blender when running the operator.
-        gtops = []  # the top (I.E. name of) each layer
-        gbottoms = []  # the first input of all nodes
-        g2bottoms = []  # the second input of all nodes
-        gcode = []  # the code slice of each layer
-        dcode = []  # the 'deploy' code slice of each layer
+        graph = []
         ########################################### Main loop
         for node in context.selected_nodes:
-            ###################### What are all the nodes inputs?
-            bottoms = []
             nname = node.name
-            string = 0
+            string = ''
+            bottoms = []
             for input in node.inputs:
-                if input.is_linked == True:
+                if input.is_linked:
                     bottom = input.links[0].from_socket.output_name
-                    bottoms.append(bottom)  # Bottoms is the list of all the nodes attached behind the current node
+                    bottoms.append(bottom)
         
-            tops = map(lambda x: x.output_name , node.outputs)
-#            params = get_params(node)
-#            include_in = get_include_in(node)
-
+            tops = [x.output_name for x in node.outputs]
             special_params = []
 
             ###########################
             if node.bl_idname == 'DataNodeType':
-                
                 transform_param = transform_param_template(node)
                 node.n_type = node.db_type
 
@@ -552,32 +573,12 @@ class Solve(bpy.types.Operator):
 #                                        node.meanfile, node.silout, channels=node.channels)
 #                    dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
             elif node.bl_idname == 'PoolNodeType':
-#                string = pooltemplate(node.name, node.kernel, node.stride, node.mode, bottoms[0], node.outputs[0].output_name)
-#                dstring = string                
-#                dstring = string
                 special_params.append(pool_template(node))
             elif node.bl_idname == 'ConvNodeType':
-#                string = convtemplate(node,node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride, bottoms[0], node.outputs[0].output_name,
-#                                    node.biasfill, node.filterlr, node.biaslr, node.filterdecay, node.biasdecay,
-#                                    node.std, node.weights,nonsquare=node.nonsquare,x=node.kernelsizex,y=node.kernelsizey)
                 special_params.append(conv_template(node))
-#                string = layer_template(node.name, "Conv", tops, bottoms, [], [], include_in)
-#                dstring = string
             elif node.bl_idname == 'DeConvNodeType':
-#                string = deconvtemplate(node,node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride,
-#                                        bottoms[0], node.outputs[0].output_name,
-#                                        node.biasfill, node.filterlr, node.biaslr, node.filterdecay, node.biasdecay,
-#                                        node.std, node.weights,nonsquare=node.nonsquare,x=node.kernelsizex,y=node.kernelsizey)
-
-#                string = layer_template(node.name, "DeConv", tops, bottoms, [p], [], include_in)
-#                dstring = string
                 special_params.append(conv_template(node))
             elif node.bl_idname == 'FCNodeType':
-#                string = FCtemplate(node.name, node.outputnum, bottoms[0], node.outputs[0].output_name, node.sparse, node.weights, node.biasfill,
-#                                    node.filterlr, node.biaslr, node.filterdecay, node.biasdecay, node.std,
-#                                    node.sparsity)
-#                string = layer_template(node.name, "FC", tops, bottoms, [], [], include_in)
-#                dstring = string
                 special_params.append(FC_template(node))
             elif node.bl_idname == 'FlattenNodeType':
 #                string = layer_template(node.name, "Flatten", tops, bottoms, params, [], include_in)
@@ -588,65 +589,48 @@ class Solve(bpy.types.Operator):
 #                string = silencetemplate(node.name, bottoms[0])
                 dstring = string
             elif node.bl_idname == 'LRNNodeType':
-#                string = layer_template(node.name, "LRN", tops, bottoms, params, [LRNtemplate(node)], include_in)
                 special_params.append(LRNtemplate(node))
                 dstring = string
             elif node.bl_idname == 'AcNodeType':
                 node.type = node.mode
-#                string = layer_template(node.name, node.mode, tops, bottoms, params, [], include_in)
-                dstring = string
             elif node.bl_idname == 'ReluNodeType':
-#                string = layer_template(node.name, "ReLU", tops, bottoms, params, [Relutemplate(node)], include_in)
                 special_params.append(Relutemplate(node))
                 dstring = string
             elif node.bl_idname == 'PReluNodeType':
                 string = PRelutemplate(node, in1)
                 dstring = string
             elif node.bl_idname == 'DropoutNodeType':
-#                string = layer_template(node.name, "Dropout", tops, bottoms, params, [dropouttemplate(node)], include_in)
                 special_params.append(dropouttemplate(node))
                 dstring = string
             elif node.bl_idname == 'SMLossNodeType':
-#                string = layer_template(node.name, "SoftmaxWithLoss", tops, bottoms, params, [loss_weight_template(node.w)], include_in)
                 special_params.append(loss_weight_template(node.w))
                 dstring = ''
             elif node.bl_idname == 'SCELossNodeType':
-#                string = layer_template(node.name, "SigmoidCrossEntropyLoss", tops, bottoms, params, [loss_weight_template(node.w)], include_in)
                 special_params.append(loss_weight_template(node.w))
                 dstring = ''
             elif node.bl_idname == 'EULossNodeType':
-#                string = layer_template(node.name, "EuclideanLoss", tops, bottoms, params, [loss_weight_template(node.w)], include_in)
                 special_params.append(loss_weight_template(node.w))
                 dstring = ''
             elif node.bl_idname == 'ConcatNodeType':
-#                string = layer_template(node.name, "Concat", tops, bottoms, params, [Concattemplate(node)], include_in)
                 special_params.append(Concattemplate(node))
-                dstring = string
             elif node.bl_idname == 'AccuracyNodeType':
-#                string = layer_template(node.name, "Accuracy", tops, bottoms, params, [], include_in)
                 dstring = ''
             elif node.bl_idname == 'ArgMaxNodeType':
-#                string = layer_template(node.name, "ArgMax", tops, bottoms, params, [argmaxtemplate(node)], include_in)
                 special_params.append(argmaxtemplate(node))
                 dstring = string
             elif node.bl_idname == 'HDF5OutputNodeType':
-#                string = layer_template(node.name, "HDF5Output", tops, bottoms, params, [hdf5outputtemplate(node)], include_in)
                 special_params.append(hdf5outputtemplate(node))
                 dstring = ''
             elif node.bl_idname == 'LogNodeType':
-#                string = layer_template(node.name, "Log", tops, bottoms, params, [logtemplate(node)], include_in)
                 special_params.append(logtemplate(node))
                 dstring = string;
             elif node.bl_idname == 'PowerNodeType':
-#                string = layer_template(node.name, "Power", tops, bottoms, params, [powertemplate(node)], include_in)
                 special_params.append(powertemplate(node))
                 dstring = string;
             elif node.bl_idname == 'ReductionNodeType':
-#                string = layer_template(node.name, "Reduction", tops, bottoms, params, [reductiontemplate(node)], include_in)
                 special_params.append(reductiontemplate(node))
                 dstring = string;
             elif node.bl_idname == 'SliceNodeType':
-#                string = layer_template(node.name, "Slice", tops, bottoms, params, [slicetemplate(node)], include_in)
                 special_params.append(slicetemplate(node))
             elif node.bl_idname == 'NodeReroute':
                 string = ''
@@ -666,29 +650,18 @@ class Solve(bpy.types.Operator):
                 if node.bl_idname != 'DataNodeType':
                     string = layer_template(node, tops, bottoms, special_params)
                     dstring = string
-                gcode.extend([string])
-                dcode.extend([dstring])
-                gtops.extend([node.name])
-                try:
-                    gbottoms.extend([bottoms[0]])  # first node attached to current
-                except IndexError:
-                    gbottoms.extend([str(random.random())])
-                try:
-                    g2bottoms.extend([bottoms[1]])  # Second node attached to current
-                except IndexError:
-                    g2bottoms.extend([str(random.random())])
-        for juggle in range(30):
-            gtops, gbottoms, g2bottoms, gcode, dcode = self.juggleorder(gtops, gbottoms, g2bottoms, gcode, 0, dcode)
-            # for chunk in gcode:
-            # print (chunk)
-            gtops, gbottoms, g2bottoms, gcode, dcode = self.juggleorder(gtops, gbottoms, g2bottoms, gcode, 1, dcode)
-        solution = ''
-        for chunk in gcode:
-            solution = solution + chunk
-        dsolution = ''
-        for chunk in dcode:
-            dsolution = dsolution + chunk
-        # print (solution)
+                
+                v = Vertex()
+                v.string = string
+                v.dstring = dstring
+                v.bottoms = bottoms
+                v.tops = tops
+                graph.append(v)
+                
+        strings, dstrings = reorder(graph)
+        solution = ''.join(strings)
+        dsolution = ''.join(dstrings)
+    
         os.chdir(configpath)
         ttfile = open('%s_train_test.prototxt' % solvername, mode='w')
         ttfile.write(solution)
@@ -704,65 +677,6 @@ class Solve(bpy.types.Operator):
         scriptfile.close()
         print ('Finished solving tree')
         return {'FINISHED'}  # this lets blender know the operator finished successfully.
-
-    def juggleorder(self, names, refs, refs2, code, prefsocket, dcode):
-
-        '''Ever heard of a bubble sort? Meet the worlds most complicated function designed to do just that.
-        It checks whether a node is dependent on the node below it, and orders all the laters in the prototxt
-        by a reference number. For some reason it sort of does it twice. Best just not to touch this and hope it never
-        breaks as no-one will ever EVER work out how fix it.'''
-        # Names, in 1, in2, code chunk, ??, deploy code chunk
-        goodorder = 0
-        checks = [1] * len(names)  #make list of zeros, length names
-        while sum(checks) > 0:
-            for name in names:
-                Referred1Socket = 0
-                Bottomless = 0
-                Referred2Socket = 0
-                # Start of list is data layer
-                # get location of bottom in top
-                # print (name)
-                #print (names)
-                loc = names.index(name)
-                try:
-                    ref = refs.index(name)  # find where the current node is referred to
-                    Referred1Socket = 1
-                except ValueError:
-                    pass
-                try:
-                    float(name)  #we used a float name for nodes that are bottomless
-                    print ('passing float')
-                    print (name)
-                    Bottomless = 1
-                except ValueError:
-                    pass
-                try:
-                    tmpref = refs2.index(name)  #check a node isnt reffered to as the second socket
-                    if Referred1Socket == 1 and prefsocket == 1:
-                        ref = tmpref  #only put before if on second socket pass, or does not connect to a first socket
-                    elif Referred1Socket == 0:  #(Will not be a bottomless node as connects to at least one socket)
-                        ref = tmpref
-                    Referred2Socket = 1
-                except ValueError:
-                    pass
-                if Referred1Socket + Bottomless + Referred2Socket == 0:
-                    # not referred to by anything, so can be as late as possible
-                    ref = 10000000000000000
-                    #time.sleep(10)
-                #ref = 10000000
-                if ref < loc:
-                    names, refs, refs2, code, dcode = self.swap(loc, ref, (names, refs, refs2, code, dcode))
-                    checks[loc] = 0
-                else:
-                    checks[loc] = 0
-        return names, refs, refs2, code, dcode
-
-    def swap(self, orig, dest, lists):
-        for list in lists:
-            tmp = list[dest]
-            list[dest] = list[orig]
-            list[orig] = tmp
-        return lists
 
 
 def register():
