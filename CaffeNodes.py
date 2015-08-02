@@ -490,6 +490,8 @@ class PoolNode(Node, CaffeTreeNode):
     bl_label = 'Pooling Node'
     # Icon identifier
     bl_icon = 'SOUND'
+	
+	n_type = 'Pool'
 
     # === Custom Properties ===
     modes = [
@@ -641,7 +643,9 @@ class MVNNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         layout.prop(self, "normalize_variance")    
         layout.prop(self, "across_channels")    
-        layout.prop(self, "eps")         
+        layout.prop(self, "eps")
+		
+        self.draw_extra_params(context, layout)
         
 class ConvNode(Node, CaffeTreeNode):
     # === Basics ===
@@ -915,6 +919,7 @@ class FlattenNode(Node, CaffeTreeNode):
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
         layout.label("Flatten")
+        self.draw_extra_params(context, layout)
         
 class SilenceNode(Node, CaffeTreeNode):
     # === Basics ===
@@ -987,6 +992,8 @@ class LRNNode(Node, CaffeTreeNode):
         layout.prop(self, "beta")
         layout.prop(self, "size")
         layout.prop(self, "mode")
+		
+        self.draw_extra_params(context, layout)
 
 class ActivationNode(Node, CaffeTreeNode):
     # === Basics ===
@@ -1021,6 +1028,7 @@ class ActivationNode(Node, CaffeTreeNode):
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
         layout.prop(self, "mode")
+        self.draw_extra_params(context, layout)
 
 class ReLuNode(Node, CaffeTreeNode):
     # === Basics ===
@@ -1061,6 +1069,7 @@ class ReLuNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         layout.prop(self, "negative_slope")
         layout.prop(self, "engine")
+        self.draw_extra_params(context, layout)
 
 class PReLuNode(Node, CaffeTreeNode):
     # === Basics ===
@@ -1134,7 +1143,8 @@ class PReLuNode(Node, CaffeTreeNode):
                 layout.prop(self, "sparse")
         elif self.type == 'uniform':
             layout.prop(self,'min')
-            layout.prop(self,'max')        
+            layout.prop(self,'max')    
+        self.draw_extra_params(context, layout)    
                 
 class SMLossNode(Node, CaffeTreeNode):
     # === Basics ===
@@ -1169,6 +1179,7 @@ class SMLossNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         layout.label("Softmax Loss")
         layout.prop(self, "w")
+        self.draw_extra_params(context, layout)
 
 
 class SCELossNode(Node, CaffeTreeNode):
@@ -1205,6 +1216,7 @@ class SCELossNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         layout.label("SCE Loss")
         layout.prop(self, "w")
+        self.draw_extra_params(context, layout)
 
 class EULossNode(Node, CaffeTreeNode):
     # === Basics ===
@@ -1240,6 +1252,7 @@ class EULossNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         layout.label("EU Loss")
         layout.prop(self, "w")
+        self.draw_extra_params(context, layout)
 
 class DropoutNode(Node, CaffeTreeNode):
     # === Basics ===
@@ -1274,6 +1287,7 @@ class DropoutNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         layout.label("Dropout factor")
         layout.prop(self, "dropout_ratio")
+        self.draw_extra_params(context, layout)
 
 class ConcatNode(Node, CaffeTreeNode):
     # === Basics ===
@@ -1308,6 +1322,7 @@ class ConcatNode(Node, CaffeTreeNode):
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
         layout.prop(self, "axis")
+        self.draw_extra_params(context, layout)
 
 
 class AccuracyNode(Node, CaffeTreeNode):
@@ -1348,6 +1363,7 @@ class AccuracyNode(Node, CaffeTreeNode):
         layout.prop(self, "Testonly")
 
         self.draw_include_in(layout)
+        self.draw_extra_params(context, layout)
 
 class ArgMaxNode(Node, CaffeTreeNode):
     # === Basics ===
@@ -1383,6 +1399,7 @@ class ArgMaxNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         layout.prop(self, "OutMaxVal")
         layout.prop(self, "TopK")
+        self.draw_extra_params(context, layout)
         
 class HDF5OutputNode(Node, CaffeTreeNode):
     # === Basics ===
@@ -1459,6 +1476,7 @@ class LogNode(Node, CaffeTreeNode):
         layout.prop(self, "scale")
         layout.prop(self, "shift")
         layout.prop(self, "base")
+        self.draw_extra_params(context, layout)
 
 class PowerNode(Node, CaffeTreeNode):
     # === Basics ===
@@ -1496,6 +1514,7 @@ class PowerNode(Node, CaffeTreeNode):
         layout.prop(self, "power")
         layout.prop(self, "scale")
         layout.prop(self, "shift")
+        self.draw_extra_params(context, layout)
 
 
 class ReductionNode(Node, CaffeTreeNode):
@@ -1540,6 +1559,7 @@ class ReductionNode(Node, CaffeTreeNode):
         layout.prop(self, "operation")
         layout.prop(self, "axis")
         layout.prop(self, "coeff")
+        self.draw_extra_params(context, layout)
 
 class slice_point_p_g(bpy.types.PropertyGroup):
     slice_point = bpy.props.IntProperty(min=0)
@@ -1597,6 +1617,8 @@ class SliceNode(Node, CaffeTreeNode):
         
         for slice_point in self.slice_points:
             slice_point.draw(context, layout)
+			
+        self.draw_extra_params(context, layout)
 
 class SolverNode(Node, CaffeTreeNode):
     # === Basics ===
