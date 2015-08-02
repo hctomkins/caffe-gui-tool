@@ -162,22 +162,32 @@ def hdf5_data_template(node, source):
     return string
 
 
-def pooltemplate(name, kernel, stride, mode, bottom, top):
+#def pooltemplate(name, kernel, stride, mode, bottom, top):
+#    string = '''\
+#layer {
+#    name: "%s"
+#    type: "Pooling"
+#    bottom: "%s"
+#    top: "%s"
+#    pooling_param {
+#        pool: %s
+#        kernel_size: %i
+#        stride: %i
+#    }
+#}
+#''' % (name, bottom, top, mode, kernel, stride)
+#    return string
+
+def pool_template(node):
     string = '''\
-layer {
-    name: "%s"
-    type: "Pooling"
-    bottom: "%s"
-    top: "%s"
     pooling_param {
         pool: %s
         kernel_size: %i
         stride: %i
     }
-}
-''' % (name, bottom, top, mode, kernel, stride)
-    return string
+''' % (node.mode, node.kernel_size, node.stride)
 
+    return string
 
 def mvntemplate(name, bottom, normalize_variance, across_channels, eps):
     string = \
@@ -542,9 +552,10 @@ class Solve(bpy.types.Operator):
 #                                        node.meanfile, node.silout, channels=node.channels)
 #                    dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
             elif node.bl_idname == 'PoolNodeType':
-                string = pooltemplate(node.name, node.kernel, node.stride, node.mode, bottoms[0], node.outputs[0].output_name)
-                dstring = string                
-                dstring = string
+#                string = pooltemplate(node.name, node.kernel, node.stride, node.mode, bottoms[0], node.outputs[0].output_name)
+#                dstring = string                
+#                dstring = string
+                special_params.append(pool_template(node))
             elif node.bl_idname == 'ConvNodeType':
 #                string = convtemplate(node,node.name, node.OutputLs, node.Padding, node.kernelsize, node.Stride, bottoms[0], node.outputs[0].output_name,
 #                                    node.biasfill, node.filterlr, node.biaslr, node.filterdecay, node.biasdecay,

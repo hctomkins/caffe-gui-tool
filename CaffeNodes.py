@@ -490,8 +490,8 @@ class PoolNode(Node, CaffeTreeNode):
     bl_label = 'Pooling Node'
     # Icon identifier
     bl_icon = 'SOUND'
-	
-	n_type = 'Pool'
+    
+    n_type = 'Pooling'
 
     # === Custom Properties ===
     modes = [
@@ -499,7 +499,8 @@ class PoolNode(Node, CaffeTreeNode):
         ("AVE", "AVE", "Average pooling"),
         ("STOCHASTIC", "SGD", "Stochastic pooling"),
     ]
-    kernel = bpy.props.IntProperty(default=2, min=1, soft_max=5)
+
+    kernel_size = bpy.props.IntProperty(default=2, min=1, soft_max=5)
     stride = bpy.props.IntProperty(default=2, min=1, soft_max=5)
     mode = bpy.props.EnumProperty(name='Mode', default='MAX', items=modes)
     # === Optional Functions ===
@@ -522,7 +523,7 @@ class PoolNode(Node, CaffeTreeNode):
 #                        (calcsize(self, context,axis='x'),calcsize(self, context,axis='y')))
 #        else:
 #            layout.label("image output is %s pixels" %calcsize(self, context,axis='x'))
-        layout.prop(self, "kernel")
+        layout.prop(self, "kernel_size")
         layout.prop(self, "stride")
         layout.prop(self, "mode")
 
