@@ -608,15 +608,15 @@ class Solve(bpy.types.Operator):
                 dstring = string
             elif node.bl_idname == 'SMLossNodeType':
 #                string = layer_template(node.name, "SoftmaxWithLoss", tops, bottoms, params, [loss_weight_template(node.w)], include_in)
-                special_params.append(loss_weight_template(node))
+                special_params.append(loss_weight_template(node.w))
                 dstring = ''
             elif node.bl_idname == 'SCELossNodeType':
 #                string = layer_template(node.name, "SigmoidCrossEntropyLoss", tops, bottoms, params, [loss_weight_template(node.w)], include_in)
-                special_params.append(loss_weight_template(node))
+                special_params.append(loss_weight_template(node.w))
                 dstring = ''
             elif node.bl_idname == 'EULossNodeType':
 #                string = layer_template(node.name, "EuclideanLoss", tops, bottoms, params, [loss_weight_template(node.w)], include_in)
-                special_params.append(loss_weight_template(node))
+                special_params.append(loss_weight_template(node.w))
                 dstring = ''
             elif node.bl_idname == 'ConcatNodeType':
 #                string = layer_template(node.name, "Concat", tops, bottoms, params, [Concattemplate(node)], include_in)
