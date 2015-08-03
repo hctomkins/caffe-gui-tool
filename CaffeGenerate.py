@@ -252,55 +252,59 @@ def solvertemplate(type, learningrate, testinterval, testruns, maxiter, displayi
     snapshotprefix = snapshotpath + snapshotname
     netpath = configpath + '%s_train_test.prototxt' % solvername
     if type == 'ADAGRAD':
-        tsstring = \
-            'lr_policy: "step"\n\
-            gamma: 0.1\n\
-            stepsize: 10000\n\
-            weight_decay: 0.0005\n\
-            solver_type: ADAGRAD\n'
+        tsstring = '''\
+lr_policy: "step"
+gamma: 0.1
+stepsize: 10000
+weight_decay: 0.0005
+solver_type: ADAGRAD
+'''
     elif type == 'NAG':
-        tsstring = \
-            'lr_policy: "step"\n\
-            gamma: 0.1\n\
-            stepsize: 10000\n\
-            weight_decay: 0.0005\n\
-            momentum: 0.95\n\
-            solver_type: NESTEROV\n'
+        tsstring = '''\
+lr_policy: "step"\n\
+gamma: 0.1
+stepsize: 10000
+weight_decay: 0.0005
+momentum: 0.95
+solver_type: NESTEROV
+'''
     elif type == 'SGD':
-        tsstring = \
-            'lr_policy: "step"\n\
-            gamma: 0.1\n\
-            stepsize: 10000\n\
-            weight_decay: 0.0005\n\
-            momentum: 0.95\n'
+        tsstring = '''\
+lr_policy: "step"
+gamma: 0.1
+stepsize: 10000
+weight_decay: 0.0005
+momentum: 0.95
+'''
     else:
         print ('ERROR')
         time.sleep(1000000)
-    genericstring = \
-        'net: "%s"\n\
-        test_iter: %i\n\
-        test_interval: %i\n\
-        base_lr: %f\n\
-        display: %i\n\
-        max_iter: %i\n\
-        iter_size: %i\n\
-        snapshot: %i\n\
-        snapshot_prefix: "%s"\n\
-        solver_mode: %s\n' \
-        % (netpath, testruns, testinterval, learningrate, displayiter, maxiter, itersize, snapshotiter, snapshotprefix,
+    genericstring = '''\
+net: "%s"
+test_iter: %i
+test_interval: %i
+base_lr: %f
+display: %i
+max_iter: %i
+iter_size: %i
+snapshot: %i
+snapshot_prefix: "%s"
+solver_mode: %s
+''' % (netpath, testruns, testinterval, learningrate, displayiter, maxiter, itersize, snapshotiter, snapshotprefix,
         solver)
     solverstring = genericstring + tsstring
     return solverstring
 
 
 def deploytemplate(batch, channels, size, datain):
-    deploystring = \
-        'name: "Autogen"\n\
-    input: "%s"\n\
-    input_dim: %i\n\
-    input_dim: %i\n\
-    input_dim: %i\n\
-    input_dim: %i\n' % (datain, batch, channels, size, size)
+    deploystring = '''\
+name: "Autogen"
+input: "%s"
+input_dim: %i
+input_dim: %i
+input_dim: %i
+input_dim: %i
+''' % (datain, batch, channels, size, size)
     return deploystring
 
 
@@ -418,8 +422,6 @@ def reorder(graph):
     res_dstring = []
     while len(graph) > 0:
         curr = min(graph, key = lambda x: len(x.bottoms))
-#        print(curr.string)
-
         if len(curr.bottoms) != 0:
             print('Cycle in graph?!')
         
@@ -427,17 +429,11 @@ def reorder(graph):
         res_dstring.append(curr.dstring)
         
         for item in graph:
-#            print(item.bottoms)
             for top in curr.tops:
                 try:
-#                    print(item.bottoms)
                     item.bottoms.remove(top)
-#                    print("Removed")
                 except:
                     pass
-#            print("---")
-#            print(item.bottoms)
-#            print("-----")
         graph.remove(curr)
     return res_string, res_dstring
 
@@ -489,25 +485,6 @@ class Solve(bpy.types.Operator):
                 
                 #TODO: Finish dstring
                 dstring = ''
-                
-#                if node.dbtype == 'LMDB':
-#                    string = datatemplate(node.name, node.outputs[0].output_name, node.outputs[1].output_name, node.batchsize,
-#                                        node.trainpath, node.testpath, node.shuffle, node.supervised,
-#                                        node.dbtype, node.usemeanfile, node.imsize, node.maxval, node.mirror,
-#                                        node.meanfile, node.silout)
-#                    dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
-#                elif node.dbtype == 'Image files':
-#                    string = datatemplate(node.name, node.outputs[0].output_name, node.outputs[1].output_name,
-#                                        node.batchsize, node.trainfile, node.testfile, node.shuffle, node.supervised,
-#                                        node.dbtype, node.usemeanfile, node.imsize, node.maxval, node.mirror,
-#                                        node.meanfile, node.silout, channels=node.channels)
-#                    dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
-#                elif node.dbtype == 'HDF5Data':
-#                    string = datatemplate(node.name, node.outputs[0].output_name, node.outputs[1].output_name,
-#                                        node.batchsize, node.trainHDF5, node.trainHDF5, node.shuffle, node.supervised,
-#                                        node.dbtype, node.usemeanfile, node.imsize, node.maxval, node.mirror,
-#                                        node.meanfile, node.silout, channels=node.channels)
-#                    dstring = deploytemplate(node.batchsize, node.channels, node.imsize, node.name)
             elif node.bl_idname == 'PoolNodeType':
                 special_params.append(pool_template(node))
             elif node.bl_idname == 'ConvNodeType':
@@ -607,14 +584,11 @@ class Solve(bpy.types.Operator):
         print ('Finished solving tree')
         return {'FINISHED'}  # this lets blender know the operator finished successfully.
 
-
 def register():
     bpy.utils.register_class(Solve)
 
-
 def unregister():
     bpy.utils.unregister_class(Solve)
-
 
 # This allows you to run the script directly from blenders text editor
 # to test the addon without having to install it.
