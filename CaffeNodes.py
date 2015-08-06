@@ -32,16 +32,32 @@ def calcsize(self, context,axis='x'):
             #print (node.inputs[0])
             #print(dir(node.inputs[0]))
             #print(type(node.inputs[0]))
-            if not node.nonsquare:
-                kernelsizes.extend([node.kernelsize])
+            if node.square_kernel:
+                kernelsizes.extend([node.kernel_size])
             elif axis == 'x':
-                kernelsizes.extend([node.kernelsizex])
+                kernelsizes.extend([node.kernel_w])
             elif axis == 'y':
-                kernelsizes.extend([node.kernelsizey])
+                kernelsizes.extend([node.kernel_h])
             else:
                 raise RuntimeError
-            strides.extend([node.Stride])
-            paddings.extend([node.Padding])
+
+            if node.square_stride:
+                strides.extend([node.stride])
+            elif axis == 'x':
+                strides.extend([node.stride_w])
+            elif axis == 'y':
+                strides.extend([node.stride_h])
+            else:
+                raise RuntimeError
+
+            if node.square_padding:
+                paddings.extend([node.pad])
+            elif axis == 'x':
+                paddings.extend([node.pad_w])
+            elif axis == 'y':
+                paddings.extend([node.pad_h])
+            else:
+                raise RuntimeError
             poolsizes.extend([1])
             poolstrides.extend([1])
             offsets.extend([0])
@@ -53,16 +69,32 @@ def calcsize(self, context,axis='x'):
             #print (node.inputs[0])
             #print(dir(node.inputs[0]))
             #print(type(node.inputs[0]))
-            if not node.nonsquare:
-                kernelsizes.extend([node.kernelsize])
+            if node.square_kernel:
+                kernelsizes.extend([node.kernel_size])
             elif axis == 'x':
-                kernelsizes.extend([node.kernelsizex])
+                kernelsizes.extend([node.kernel_w])
             elif axis == 'y':
-                kernelsizes.extend([node.kernelsizey])
+                kernelsizes.extend([node.kernel_h])
             else:
                 raise RuntimeError
-            strides.extend([node.Stride])
-            paddings.extend([node.Padding])
+
+            if node.square_stride:
+                strides.extend([node.stride])
+            elif axis == 'x':
+                strides.extend([node.stride_w])
+            elif axis == 'y':
+                strides.extend([node.stride_h])
+            else:
+                raise RuntimeError
+
+            if node.square_padding:
+                paddings.extend([node.pad])
+            elif axis == 'x':
+                paddings.extend([node.pad_w])
+            elif axis == 'y':
+                paddings.extend([node.pad_h])
+            else:
+                raise RuntimeError
             poolsizes.extend([1])
             poolstrides.extend([1])
             offsets.extend([0])
@@ -82,7 +114,7 @@ def calcsize(self, context,axis='x'):
             offsets.extend([0])
             passes.extend([0])
             reversals.extend([0])
-            fcsizes.extend([node.outputnum])
+            fcsizes.extend([node.num_output])
             node = node.inputs[0].links[0].from_node
             #print (node)
         elif node.bl_idname == "PoolNodeType":
@@ -98,12 +130,23 @@ def calcsize(self, context,axis='x'):
             node = node.inputs[0].links[0].from_node
         elif node.bl_idname == "DataNodeType":
             # When the data node is reached, we must be at the back of the nodetree, so start to work forwards
-            if not node.rim:
-                x = float(node.imsize)
+            square = 0
+            if node.db_type == 'ImageData' :
+                if node.new_height == node.new_width:
+                    square = 1
+                h = node.new_height
+                w = node.new_width
+            if node.db_type != 'ImageData' :
+                if node.height == node.width:
+                    square = 1
+                h = node.height
+                w = node.width
+            if square:
+                x = float(w)
             elif axis=='x':
-                x = float(node.imsizex)
+                x = float(w)
             else:
-                x = float(node.imsizey)
+                x = float(h)
             # work forwards
             numofnodes = len(passes)
             for node in range(numofnodes):
@@ -200,8 +243,25 @@ class OutputSocket(NodeSocket):
     
     # Optional function for drawing the socket input value
     def draw(self, context, layout, node, text):
+        layout.label("Optional name")
         layout.prop(self, "output_name")
     
+    # Socket color
+    def draw_color(self, context, node):
+        return (0.0, 1.0, 1.0, 0.5)
+
+class InPlaceOutputSocket(NodeSocket):
+    # Description string
+    '''Custom node socket type'''
+    # Optional identifier string. If not explicitly defined, the python class name is used.
+    bl_idname = 'InPlaceOutputSocketType'
+    # Label for nice name display
+    bl_label = 'In Place Output Socket'
+    # Enum items list
+
+    output_name = bpy.props.StringProperty(name='',default='')
+    def draw(self, context, layout, node, text):
+        layout.label(text)
     # Socket color
     def draw_color(self, context, node):
         return (0.0, 1.0, 1.0, 0.5)
@@ -381,8 +441,9 @@ class DataNode(Node, CaffeTreeNode):
     # Image data params
     new_height = bpy.props.IntProperty(name="New image height",min=0, default=0, soft_max=1000)
     new_width = bpy.props.IntProperty(name="New image width",min=0, default=0, soft_max=1000)
+    height = bpy.props.IntProperty(name="Image height",min=0, default=0, soft_max=1000)
+    width = bpy.props.IntProperty(name="Image width",min=0, default=0, soft_max=1000)
     is_color = bpy.props.BoolProperty(name="Is color image",default=True)
-    
     # For Image data + HDF5 data
     shuffle = bpy.props.BoolProperty(name='Shuffle', default=False)
     
@@ -435,6 +496,8 @@ class DataNode(Node, CaffeTreeNode):
             layout.prop(self, "shuffle")
         else:
             layout.prop(self, "rand_skip")
+            layout.prop(self, "height")
+            layout.prop(self, "width")
 
     def draw_label(self):
         return "Data Node"
@@ -518,11 +581,11 @@ class PoolNode(Node, CaffeTreeNode):
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
-#        if calcsize(self, context,axis='x') != calcsize(self, context,axis='y'):
-#            layout.label("image x,y output is %s,%s pixels" %
-#                        (calcsize(self, context,axis='x'),calcsize(self, context,axis='y')))
-#        else:
-#            layout.label("image output is %s pixels" %calcsize(self, context,axis='x'))
+        if calcsize(self, context,axis='x') != calcsize(self, context,axis='y'):
+            layout.label("image x,y output is %s,%s pixels" %
+                       (calcsize(self, context,axis='x'),calcsize(self, context,axis='y')))
+        else:
+            layout.label("image output is %s pixels" %calcsize(self, context,axis='x'))
         layout.prop(self, "kernel_size")
         layout.prop(self, "stride")
         layout.prop(self, "mode")
@@ -590,8 +653,6 @@ class ExpNode(Node, CaffeTreeNode):
     
     # === Optional Functions ===
     def init(self, context):
-        
-        
         self.inputs.new('ImageSocketType', "Input blob")
         self.outputs.new('OutputSocketType', "Output blob")
 
@@ -705,12 +766,11 @@ class ConvNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         #TODO: Finish calcsize
         
-#        if calcsize(self, context,axis='x') != calcsize(self, context,axis='y'):
-#            layout.label("image x,y output is %s,%s pixels" %
-#                        (calcsize(self, context,axis='x'),calcsize(self, context,axis='y')))
-#        else:
-#            layout.label("image output is %s pixels" %calcsize(self, context,axis='x'))
-        
+        if calcsize(self, context,axis='x') != calcsize(self, context,axis='y'):
+            layout.label("image x,y output is %s,%s pixels" %
+                       (calcsize(self, context,axis='x'),calcsize(self, context,axis='y')))
+        else:
+            layout.label("image output is %s pixels" %calcsize(self, context,axis='x'))
         layout.prop(self, "num_output")
         layout.prop(self, "bias_term")
         
@@ -801,11 +861,11 @@ class DeConvNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         #TODO: Finish calcsize
         
-        #        if calcsize(self, context,axis='x') != calcsize(self, context,axis='y'):
-        #            layout.label("image x,y output is %s,%s pixels" %
-        #                        (calcsize(self, context,axis='x'),calcsize(self, context,axis='y')))
-        #        else:
-        #            layout.label("image output is %s pixels" %calcsize(self, context,axis='x'))
+        if calcsize(self, context,axis='x') != calcsize(self, context,axis='y'):
+           layout.label("image x,y output is %s,%s pixels" %
+                       (calcsize(self, context,axis='x'),calcsize(self, context,axis='y')))
+        else:
+           layout.label("image output is %s pixels" %calcsize(self, context,axis='x'))
         
         layout.prop(self, "num_output")
         layout.prop(self, "bias_term")
@@ -876,7 +936,7 @@ class FCNode(Node, CaffeTreeNode):
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
-#        layout.label("Network is now %s neurons" % calcsize(self, context))
+        layout.label("Network is now %s neurons" % calcsize(self, context))
         layout.prop(self, "num_output")
         layout.prop(self, "bias_term")
         layout.prop(self, "axis")
@@ -1765,6 +1825,7 @@ def register():
     bpy.utils.register_class(slice_point_p_g)
     bpy.utils.register_class(OutputSocket)
     bpy.utils.register_class(CaffeTree)
+    bpy.utils.register_class(InPlaceOutputSocket)
     bpy.utils.register_class(DataNode)
     bpy.utils.register_class(DropoutNode)
     bpy.utils.register_class(PoolNode)
@@ -1807,6 +1868,7 @@ def unregister():
     bpy.utils.unregister_class(params_p_g)
     bpy.utils.unregister_class(slice_point_p_g)
     bpy.utils.unregister_class(OutputSocket)
+    bpy.utils.unregister_class(InPlaceOutputSocket)
     bpy.utils.unregister_class(CaffeTree)
     bpy.utils.unregister_class(DataNode)
     bpy.utils.unregister_class(DropoutNode)

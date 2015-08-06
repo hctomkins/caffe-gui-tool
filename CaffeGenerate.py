@@ -437,6 +437,57 @@ def reorder(graph):
         graph.remove(curr)
     return res_string, res_dstring
 
+def nodebefore(innode,socket=0):
+    return innode.inputs[socket].links[0].from_socket.node
+
+def isinplace(node):
+    if node.bl_idname == 'ReluNodeType' or node.bl_idname == 'DropoutNodeType':
+        return 1
+    else:
+        return 0
+
+def findsocket(socketname,node):        #Given a node, find the position of a certain output socket
+    print (node.name)
+    for number,socket in enumerate(node.outputs):
+        if socket.name == socketname:
+            print(number)
+            return number
+    raise TypeError
+
+def autotop(node,socket,orderpass=0):       #Assigns an arbitrary top name to a node
+    print('autotop')
+    if isinplace(node) and not orderpass:
+        top = nodebefore(node).name + str(socket)
+    else:
+        top = node.name + str(socket)
+    return top
+
+def autobottom(node,socketnum,orderpass=0):     #Finds the bottom of a node socket
+    print ('autobottom')
+
+    if isinplace(nodebefore(node,socketnum)) and not orderpass:
+        socketbelow = nodebefore(node,socketnum).inputs[0].links[0].from_socket.name
+        socketbelowposition = findsocket(socketbelow,nodebefore(nodebefore(node,socketnum)))
+        bottom = nodebefore(nodebefore(node,socketnum),0).name + str(socketbelowposition)
+    else:
+        socketbelow = node.inputs[socketnum].links[0].from_socket.name
+        socketbelowposition = findsocket(socketbelow,nodebefore(node,socketnum))
+        bottom = nodebefore(node,socketnum).name + str(socketbelowposition)
+    return bottom
+
+def getbottomsandtops(node,orderpass=0):
+    bottoms = []
+    for socknum,input in enumerate(node.inputs):
+        if input.is_linked:
+            bottom = input.links[0].from_socket.output_name
+            print(input.links[0].from_socket.name)
+            if bottom != '':
+                bottoms.extend([bottom])
+            else:
+                bottoms.extend([autobottom(node,socknum,orderpass)])
+    tops = [x.output_name if x.output_name != '' else autotop(node,socket,orderpass) for socket,x in enumerate(node.outputs)]
+    return bottoms,tops
+
 class Solve(bpy.types.Operator):
     """Generate Caffe solver"""  # blender will use this as a tooltip for menu items and buttons.
     bl_idname = "nodes.make_solver"  # unique identifier for buttons and menu items to reference.
@@ -449,13 +500,9 @@ class Solve(bpy.types.Operator):
         for node in context.selected_nodes:
             nname = node.name
             string = ''
-            bottoms = []
-            for input in node.inputs:
-                if input.is_linked:
-                    bottom = input.links[0].from_socket.output_name
-                    bottoms.append(bottom)
-        
-            tops = [x.output_name for x in node.outputs]
+            bottoms,tops = getbottomsandtops(node)
+            print(tops)
+            print (bottoms)
             special_params = []
 
             ###########################
@@ -556,7 +603,9 @@ class Solve(bpy.types.Operator):
                 if node.bl_idname != 'DataNodeType':
                     string = layer_template(node, tops, bottoms, special_params)
                     dstring = string
-                
+                ################################# Recalculate bottoms and tops for ordering
+                bottoms,tops = getbottomsandtops(node,orderpass=1)
+                #####################################
                 v = Vertex()
                 v.string = string
                 v.dstring = dstring
