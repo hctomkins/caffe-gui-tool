@@ -124,7 +124,7 @@ def calcsize(self, context,axis='x'):
             fcsizes.extend([0])
             passes.extend([0])
             reversals.extend([0])
-            poolsizes.extend([node.kernel])
+            poolsizes.extend([node.kernel_size])
             poolstrides.extend([node.stride])
             offsets.extend([1])
             node = node.inputs[0].links[0].from_node
@@ -341,13 +341,24 @@ class AFlatSocket(NodeSocket):
         return (0.0, 0.8, 0.8, 0.5)
 
 
-class params_p_g(bpy.types.PropertyGroup):
+class params_p_gw(bpy.types.PropertyGroup):
     name = bpy.props.StringProperty(name='Shared name')
     lr_mult = bpy.props.FloatProperty(default=1.0)
     decay_mult = bpy.props.FloatProperty(default=1.0)
     
     def draw(self, context, layout):
-        layout.prop(self, "name")
+        #layout.prop(self, "name")
+        layout.prop(self, "lr_mult")
+        layout.prop(self, "decay_mult")
+
+
+class params_p_gb(bpy.types.PropertyGroup):
+    name = bpy.props.StringProperty(name='Shared name')
+    lr_mult = bpy.props.FloatProperty(default=2.0)
+    decay_mult = bpy.props.FloatProperty(default=0.0)
+
+    def draw(self, context, layout):
+        #layout.prop(self, "name")
         layout.prop(self, "lr_mult")
         layout.prop(self, "decay_mult")
 
@@ -357,8 +368,8 @@ class CaffeTreeNode:
         return ntree.bl_idname == 'CaffeNodeTree'
 
     extra_params = bpy.props.BoolProperty(name='Extra Parameters', default=False)
-    weight_params = bpy.props.PointerProperty(type=params_p_g)
-    bias_params = bpy.props.PointerProperty(type=params_p_g)
+    weight_params = bpy.props.PointerProperty(type=params_p_gw)
+    bias_params = bpy.props.PointerProperty(type=params_p_gb)
     
     phases = [("TRAIN", "TRAIN", "Train only"),
               ("TEST", "TEST", "Test only"),
@@ -494,6 +505,8 @@ class DataNode(Node, CaffeTreeNode):
             layout.prop(self, "rand_skip")
         elif self.db_type == 'HDF5Data':
             layout.prop(self, "shuffle")
+            layout.prop(self, "height")
+            layout.prop(self, "width")
         else:
             layout.prop(self, "rand_skip")
             layout.prop(self, "height")
@@ -1115,7 +1128,7 @@ class ReLuNode(Node, CaffeTreeNode):
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
-        self.outputs.new('OutputSocketType', "Rectified output")
+        self.outputs.new('InPlaceOutputSocketType', "Rectified output")
 
 
     # Copy function to initialize a copied node from an existing one.
@@ -1294,7 +1307,7 @@ class DropoutNode(Node, CaffeTreeNode):
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('NAFlatSocketType', "Input image")
-        self.outputs.new('OutputSocketType', "Output image")
+        self.outputs.new('InPlaceOutputSocketType', "Output image")
 
 
     # Copy function to initialize a copied node from an existing one.
@@ -1821,7 +1834,8 @@ node_categories = [
 
 def register():
     bpy.utils.register_class(filler_p_g)
-    bpy.utils.register_class(params_p_g)
+    bpy.utils.register_class(params_p_gw)
+    bpy.utils.register_class(params_p_gb)
     bpy.utils.register_class(slice_point_p_g)
     bpy.utils.register_class(OutputSocket)
     bpy.utils.register_class(CaffeTree)
@@ -1865,7 +1879,8 @@ def unregister():
     nodeitems_utils.unregister_node_categories("CUSTOM_NODES")
 
     bpy.utils.unregister_class(filler_p_g)
-    bpy.utils.unregister_class(params_p_g)
+    bpy.utils.unregister_class(params_p_gw)
+    bpy.utils.unregister_class(params_p_gb)
     bpy.utils.unregister_class(slice_point_p_g)
     bpy.utils.unregister_class(OutputSocket)
     bpy.utils.unregister_class(InPlaceOutputSocket)

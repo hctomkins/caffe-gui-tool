@@ -457,7 +457,7 @@ def findsocket(socketname,node):        #Given a node, find the position of a ce
 def autotop(node,socket,orderpass=0):       #Assigns an arbitrary top name to a node
     print('autotop')
     if isinplace(node) and not orderpass:
-        top = nodebefore(node).name + str(socket)
+        top = autobottom(node,0,orderpass=0)
     else:
         top = node.name + str(socket)
     return top
