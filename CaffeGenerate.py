@@ -332,7 +332,7 @@ def scripttemplate(caffepath, configpath, solvername, gpus, solver):
         extrastring = ''
     solverstring = configpath + '%s_solver.prototxt' % solvername
     caffestring = caffepath + 'caffe'
-    string = '#!/usr/bin/env sh \n %s train --solver=%s %s' % (caffestring, solverstring, extrastring)
+    string = "#!/usr/bin/env sh \n '%s' train --solver='%s' %s" % (caffestring, solverstring, extrastring)
     return string
 
 def loss_weight_template(loss_weight):
