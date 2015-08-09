@@ -419,7 +419,7 @@ def Relutemplate(node):
     relu_param {
         negative_slope: %f
     }
-    ''' % (node.negative_slope, node.engine)
+    ''' % (node.negative_slope)
     return string
 
 def dropouttemplate(node):
