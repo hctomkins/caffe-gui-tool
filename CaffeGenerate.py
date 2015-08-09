@@ -1,3 +1,7 @@
+#TODO: Add properties to solver
+#TODO: Add train/test batch size in data layer
+
+
 __author__ = 'hugh'
 bl_info = {
     "name": "Create Caffe solution",
@@ -56,8 +60,12 @@ def conv_template(node):
         stride_string = tab2 + 'stride_h: %i\n' % node.stride_h
         stride_string += tab2 + 'stride_w: %i\n' % node.stride_w
 
-    weight_filler_string = getFillerString(node.weight_filler, 'weight_filler')
-    bias_filler_string = getFillerString(node.bias_filler, 'bias_filler')
+    weight_filler_string = ''
+    bias_filler_string = ''
+    if not node.use_custom_weight:
+        weight_filler_string = getFillerString(node.weight_filler, 'weight_filler')
+        bias_filler_string = getFillerString(node.bias_filler, 'bias_filler')
+
 
     string = '''\
     convolution_param {
@@ -332,7 +340,7 @@ def loss_weight_template(loss_weight):
 
 
 def param_template(param):
-    string = tab + 'params {\n'
+    string = tab + 'param {\n'
     
     if param.name.strip():
         string += tab2 + 'name: "%s"\n' % param.name
@@ -370,6 +378,14 @@ def layer_template(node, tops, bottoms, special_params):
     special_params_string = '\n'.join(special_params)
     include_in_string = get_include_in(node)
     
+    custom_weight_string = ''
+    if node.use_custom_weight:
+        with open(node.custom_weight) as f:
+            custom_weight_string = f.read()
+    
+        custom_weight_string = '\n'.join(tab + r for r in custom_weight_string.split('\n'))
+    
+    
     string = '''\
 layer {
     name: "%s"
@@ -379,8 +395,9 @@ layer {
 %s
 %s
 %s
+%s
 }
-''' % (node.name, node.n_type, tops_string, bottoms_string, params_string, special_params_string, include_in_string)
+''' % (node.name, node.n_type, tops_string, bottoms_string, params_string, special_params_string, include_in_string, custom_weight_string)
     
     return "\n".join(filter(lambda x: x.strip(), string.splitlines())) + "\n"
 
@@ -466,6 +483,7 @@ class Solve(bpy.types.Operator):
                 if node.db_type in ('LMDB', 'LEVELDB'):
                     train_params = [data_param_template(node, node.train_path)]
                     test_params = [data_param_template(node, node.test_path)]
+                    node.n_type = 'Data'
                 elif node.db_type == 'ImageData':
                     train_params = [image_data_param_template(node, node.train_data)]
                     test_params = [image_data_param_template(node, node.test_data)]
