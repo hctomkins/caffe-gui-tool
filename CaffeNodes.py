@@ -344,6 +344,14 @@ class DataNode(Node, CaffeTreeNode):
     db_type = bpy.props.EnumProperty(name="Database type", description="Type of Data", items=DBs, default='HDF5Data')
     batch_size = bpy.props.IntProperty(min=1, default=100, soft_max=500)
     
+    def update_tops(self, context):
+        while len(self.outputs) < self.output_amount:
+            self.outputs.new('OutputSocketType', "Out%i" % len(self.outputs))
+        while len(self.outputs) > self.output_amount:
+            self.outputs.remove(self.outputs[len(self.outputs)-1])
+
+    output_amount = bpy.props.IntProperty(min=1, default=2, update=update_tops)
+    
     train_path = bpy.props.StringProperty (
         name="Train Data Path",
         default="",
@@ -412,6 +420,7 @@ class DataNode(Node, CaffeTreeNode):
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
+        layout.prop(self, "output_amount")
         layout.prop(self, "db_type")
         
         if self.db_type in ('ImageData', 'HDF5Data'):
