@@ -418,7 +418,6 @@ def Relutemplate(node):
     string = '''\
     relu_param {
         negative_slope: %f
-        engine: %s
     }
     ''' % (node.negative_slope, node.engine)
     return string

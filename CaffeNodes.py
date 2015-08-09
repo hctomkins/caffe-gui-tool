@@ -1061,7 +1061,7 @@ class ReLuNode(Node, CaffeTreeNode):
 
     # === Custom Properties ===
     negative_slope = bpy.props.FloatProperty(default=0)
-    engine = bpy.props.EnumProperty(items=engines, default='DEFAULT')
+    #engine = bpy.props.EnumProperty(items=engines, default='DEFAULT')
     
     # === Optional Functions ===
     def init(self, context):
@@ -1080,7 +1080,7 @@ class ReLuNode(Node, CaffeTreeNode):
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
         layout.prop(self, "negative_slope")
-        layout.prop(self, "engine")
+        #layout.prop(self, "engine")
         self.draw_extra_params(context, layout)
 
 class PReLuNode(Node, CaffeTreeNode):
