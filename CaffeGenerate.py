@@ -1,3 +1,6 @@
+#TODO: Add properties to solver
+#TODO: snapshot_format not available in this version. update later.
+
 __author__ = 'hugh'
 bl_info = {
     "name": "Create Caffe solution",
@@ -56,8 +59,12 @@ def conv_template(node):
         stride_string = tab2 + 'stride_h: %i\n' % node.stride_h
         stride_string += tab2 + 'stride_w: %i\n' % node.stride_w
 
-    weight_filler_string = getFillerString(node.weight_filler, 'weight_filler')
-    bias_filler_string = getFillerString(node.bias_filler, 'bias_filler')
+    weight_filler_string = ''
+    bias_filler_string = ''
+    if not node.use_custom_weight:
+        weight_filler_string = getFillerString(node.weight_filler, 'weight_filler')
+        bias_filler_string = getFillerString(node.bias_filler, 'bias_filler')
+
 
     string = '''\
     convolution_param {
@@ -73,7 +80,7 @@ def conv_template(node):
     #loadable
     return string
 
-def data_param_template(node, source):
+def data_param_template(node, source, batch_size):
     string = '''\
     data_param {
         source: "%s"
@@ -81,10 +88,10 @@ def data_param_template(node, source):
         batch_size: %i
         rand_skip: %i
     }
-''' % (source, node.db_type, node.batch_size, node.rand_skip)
+''' % (source, node.db_type, batch_size, node.rand_skip)
     return string
 
-def image_data_param_template(node, source):
+def image_data_param_template(node, source, batch_size):
     string = '''\
     image_data_param {
         source: "%s"
@@ -95,7 +102,7 @@ def image_data_param_template(node, source):
         new_width: %i
         is_color: %i
     }
-''' % (source, node.batch_size, node.rand_skip, node.shuffle, node.new_height, node.new_width, node.is_color)
+''' % (source, batch_size, node.rand_skip, node.shuffle, node.new_height, node.new_width, node.is_color)
     return string
 
 
@@ -115,14 +122,14 @@ def transform_param_template(node):
 
     return  string
 
-def hdf5_data_template(node, source):
+def hdf5_data_template(node, source, batch_size):
     string = '''\
     hdf5_data_param {
         source: "%s"
         batch_size: %i
         shuffle: %i
     }
-''' % (source, node.batch_size, node.shuffle)
+''' % (source, batch_size, node.shuffle)
 
     return string
 
@@ -258,53 +265,66 @@ def slicetemplate(node):
 ''' % (node.axis, slice_points_string)
     return string
 
-def solvertemplate(type, learningrate, testinterval, testruns, maxiter, displayiter, snapshotiter, snapshotname,
-                snapshotpath, configpath, solvername, itersize, solver='GPU'):
-    snapshotprefix = snapshotpath + snapshotname
-    netpath = configpath + '%s_train_test.prototxt' % solvername
-    if type == 'ADAGRAD':
-        tsstring = '''\
-lr_policy: "step"
-gamma: 0.1
-stepsize: 10000
-weight_decay: 0.0005
-solver_type: ADAGRAD
-'''
-    elif type == 'NAG':
-        tsstring = '''\
-lr_policy: "step"\n\
-gamma: 0.1
-stepsize: 10000
-weight_decay: 0.0005
-momentum: 0.95
-solver_type: NESTEROV
-'''
-    elif type == 'SGD':
-        tsstring = '''\
-lr_policy: "step"
-gamma: 0.1
-stepsize: 10000
-weight_decay: 0.0005
-momentum: 0.95
-'''
-    else:
-        print ('ERROR')
-        time.sleep(1000000)
-    genericstring = '''\
+
+def solver_template(node):
+    net_path = node.config_path + '%s_train_test.prototxt' % node.solvername
+    
+    lr_string = ''
+    if node.lr_policy == 'step':
+        lr_string += 'gamma: %i\n' % node.gamma
+        lr_string += 'stepsize: %i\n' % node.stepsize
+    elif node.lr_policy == 'exp':
+        lr_string += 'gamma: %i\n' % node.gamma
+    elif node.lr_policy == 'inv':
+        lr_string += 'gamma: %i\n' % node.gamma
+        lr_string += 'power: %i\n' % node.power
+    elif node.lr_policy == 'multistep':
+        pass
+    elif node.lr_policy == 'poly':
+        lr_string += 'power: %i\n' % node.power
+    elif node.lr_policy == 'sigmoid':
+        lr_string += 'gamma: %i\n' % node.gamma
+        lr_string += 'stepsize: %i\n' % node.stepsize
+
+    random_seed_string = ''
+    if node.use_random_seed:
+        random_seed_string = 'random_seed: %i' % node.random_seed
+
+    delta_string = ''
+    if node.solver_type == 'ADAGRAD':
+        delta_string = 'delta %f' % node.delta
+
+
+
+    string = ''' \
 net: "%s"
 test_iter: %i
 test_interval: %i
+test_compute_loss: %i
+test_initialization: %i
 base_lr: %f
 display: %i
+average_loss: %i
 max_iter: %i
 iter_size: %i
+lr_policy: "%s"
+%s
+momentum: %f
+weight_decay: %f
+regularization_type: "%s"
 snapshot: %i
 snapshot_prefix: "%s"
+snapshot_diff: %i
 solver_mode: %s
-''' % (netpath, testruns, testinterval, learningrate, displayiter, maxiter, itersize, snapshotiter, snapshotprefix,
-        solver)
-    solverstring = genericstring + tsstring
-    return solverstring
+%s
+solver_type: %s
+%s
+debug_info: %i
+snapshot_after_train: %i
+''' % (net_path, node.test_iter, node.test_interval, node.test_compute_loss, node.test_initialization, node.base_lr, node.display, node.average_loss, node.max_iter,
+       node.iter_size, node.lr_policy, lr_string, node.momentum, node.weight_decay, node.regularization_type, node.snapshot, node.snapshot_prefix, node.snapshot_diff,
+       node.solver_mode, random_seed_string, node.solver_type, delta_string, node.debug_info, node.snapshot_after_train)
+    return "\n".join(filter(lambda x: x.strip(), string.splitlines())) + "\n"
 
 
 def deploytemplate(batch, channels, size, datain):
@@ -322,20 +342,14 @@ input_dim: %i
 def scripttemplate(caffepath, configpath, solvername, gpus, solver):
     gpustring = ''
     usedcount = 0
-    for gpu, used in enumerate(gpus):
-        if used:
-            if usedcount != 0:
-                gpustring += ',' + str(gpu)
-            else:
-                gpustring += str(gpu)
-            usedcount += 1
-    if solver == 'GPU':
-        extrastring = '--gpu=%s' % gpustring
-    else:
-        extrastring = ''
+    
+    extrastring = ''
+    if solver == 'GPU' and gpus:
+        extrastring = '--gpu=%s' % gpus
+    
     solverstring = configpath + '%s_solver.prototxt' % solvername
     caffestring = caffepath + 'caffe'
-    string = '#!/usr/bin/env sh \n %s train --solver=%s %s' % (caffestring, solverstring, extrastring)
+    string = "#!/usr/bin/env sh \n '%s' train --solver='%s' %s" % (caffestring, solverstring, extrastring)
     return string
 
 def loss_weight_template(loss_weight):
@@ -343,7 +357,7 @@ def loss_weight_template(loss_weight):
 
 
 def param_template(param):
-    string = tab + 'params {\n'
+    string = tab + 'param {\n'
     
     if param.name.strip():
         string += tab2 + 'name: "%s"\n' % param.name
@@ -381,6 +395,14 @@ def layer_template(node, tops, bottoms, special_params):
     special_params_string = '\n'.join(special_params)
     include_in_string = get_include_in(node)
     
+    custom_weight_string = ''
+    if node.use_custom_weight:
+        with open(node.custom_weight) as f:
+            custom_weight_string = f.read()
+    
+        custom_weight_string = '\n'.join(tab + r for r in custom_weight_string.split('\n'))
+    
+    
     string = '''\
 layer {
     name: "%s"
@@ -390,8 +412,9 @@ layer {
 %s
 %s
 %s
+%s
 }
-''' % (node.name, node.n_type, tops_string, bottoms_string, params_string, special_params_string, include_in_string)
+''' % (node.name, node.n_type, tops_string, bottoms_string, params_string, special_params_string, include_in_string, custom_weight_string)
     
     return "\n".join(filter(lambda x: x.strip(), string.splitlines())) + "\n"
 
@@ -412,9 +435,8 @@ def Relutemplate(node):
     string = '''\
     relu_param {
         negative_slope: %f
-        engine: %s
     }
-    ''' % (node.negative_slope, node.engine)
+    ''' % (node.negative_slope)
     return string
 
 def dropouttemplate(node):
@@ -522,17 +544,19 @@ class Solve(bpy.types.Operator):
                 node.n_type = node.db_type
 
                 if node.db_type in ('LMDB', 'LEVELDB'):
-                    train_params = [data_param_template(node, node.train_path)]
-                    test_params = [data_param_template(node, node.test_path)]
+                    train_params = [data_param_template(node, node.train_path, node.train_batch_size)]
+                    test_params = [data_param_template(node, node.test_path, node.test_batch_size)]
+                    node.n_type = 'Data'
+                    train_params.append(transform_param)
+                    test_params.append(transform_param)
                 elif node.db_type == 'ImageData':
-                    train_params = [image_data_param_template(node, node.train_data)]
-                    test_params = [image_data_param_template(node, node.test_data)]
+                    train_params = [image_data_param_template(node, node.train_data, node.train_batch_size)]
+                    test_params = [image_data_param_template(node, node.test_data, node.test_batch_size)]
+                    train_params.append(transform_param)
+                    test_params.append(transform_param)
                 elif node.db_type == 'HDF5Data':
-                    train_params = [hdf5_data_template(node, node.train_data)]
-                    test_params = [hdf5_data_template(node, node.test_data)]
-                
-                train_params.append(transform_param)
-                test_params.append(transform_param)
+                    train_params = [hdf5_data_template(node, node.train_data, node.train_batch_size)]
+                    test_params = [hdf5_data_template(node, node.test_data, node.test_batch_size)]
                 
                 node.include_in = "TRAIN"
                 train_string = layer_template(node, tops, bottoms, train_params)
@@ -602,13 +626,10 @@ class Solve(bpy.types.Operator):
                 string = ''
                 dstring = ''
             elif node.bl_idname == 'SolverNodeType':
-                solverstring = solvertemplate(node.solver, node.learningrate, node.testinterval, node.testruns,
-                                            node.maxiter,
-                                            node.displayiter, node.snapshotiter, node.solvername, node.snapshotpath,
-                                            node.configpath, node.solvername, node.accumiters, solver=node.compmode)
-                scriptstring = scripttemplate(node.caffexec, node.configpath, node.solvername, node.gpus,
-                                            solver=node.compmode)
-                configpath = node.configpath
+                solverstring = solver_template(node)
+                scriptstring = scripttemplate(node.caffe_exec, node.config_path, node.solvername, node.gpus,
+                                            solver=node.solver_mode)
+                configpath = node.config_path
                 solvername = node.solvername
             elif node.bl_idname == 'MVNNodeType':
                 special_params.append(mvntemplate(node))
