@@ -1278,7 +1278,7 @@ class DropoutNode(Node, CaffeTreeNode):
 class ConcatNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
-    '''A Convolution node'''
+    '''A Concatination node'''
     # Optional identifier string. If not explicitly defined, the python class name is used.
     bl_idname = 'ConcatNodeType'
     # Label for nice name display
@@ -1287,13 +1287,21 @@ class ConcatNode(Node, CaffeTreeNode):
     bl_icon = 'SOUND'
     
     n_type = 'Concat'
+    
+    def update_bottoms(self, context):
+        while len(self.inputs) < self.input_amount:
+            self.inputs.new('ImageSocketType', "Input%i" % (len(self.inputs)+1))
+        while len(self.inputs) > self.input_amount:
+            self.inputs.remove(self.inputs[len(self.inputs)-1])
+
+    input_amount = bpy.props.IntProperty(min=1, default=2, update=update_bottoms)
 
     # === Custom Properties ===
     axis = bpy.props.IntProperty(default=1)
     # === Optional Functions ===
     def init(self, context):
-        self.inputs.new('ImageSocketType', "Input image")
-        self.inputs.new('ImageSocketType', "Input image")
+        self.inputs.new('ImageSocketType', "Input1")
+        self.inputs.new('ImageSocketType', "Input2")
         self.outputs.new('OutputSocketType', "Output image")
 
 
@@ -1307,6 +1315,7 @@ class ConcatNode(Node, CaffeTreeNode):
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
+        layout.prop(self, "input_amount")
         layout.prop(self, "axis")
         self.draw_extra_params(context, layout)
 
