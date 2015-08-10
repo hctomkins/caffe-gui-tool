@@ -342,7 +342,7 @@ def scripttemplate(caffepath, configpath, solvername, gpus, solver):
     
     extrastring = ''
     if solver == 'GPU' and gpus:
-        extrastring = '--gpu=%s' % gpus
+        extrastring = '--gpu=%s' % gpus[-1]
     
     solverstring = configpath + '%s_solver.prototxt' % solvername
     caffestring = caffepath + 'caffe'
