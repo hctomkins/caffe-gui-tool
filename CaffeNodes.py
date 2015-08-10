@@ -432,12 +432,14 @@ class DataNode(Node, CaffeTreeNode):
 
         layout.prop(self, "batch_size")
         
-        layout.label("Transformation Parameters")
-        layout.prop(self, "scale")
-        layout.prop(self, "mirror")
-        layout.prop(self, "use_mean_file")
-        if self.use_mean_file:
-            layout.prop(self, "mean_file")
+        
+        if self.db_type in ('ImageData', 'LMDB', 'LEVELDB'):
+            layout.label("Transformation Parameters")
+            layout.prop(self, "scale")
+            layout.prop(self, "mirror")
+            layout.prop(self, "use_mean_file")
+            if self.use_mean_file:
+                layout.prop(self, "mean_file")
         
         layout.label("Special Parameters")
         if self.db_type == 'ImageData':

@@ -483,15 +483,16 @@ class Solve(bpy.types.Operator):
                     train_params = [data_param_template(node, node.train_path)]
                     test_params = [data_param_template(node, node.test_path)]
                     node.n_type = 'Data'
+                    train_params.append(transform_param)
+                    test_params.append(transform_param)
                 elif node.db_type == 'ImageData':
                     train_params = [image_data_param_template(node, node.train_data)]
                     test_params = [image_data_param_template(node, node.test_data)]
+                    train_params.append(transform_param)
+                    test_params.append(transform_param)
                 elif node.db_type == 'HDF5Data':
                     train_params = [hdf5_data_template(node, node.train_data)]
                     test_params = [hdf5_data_template(node, node.test_data)]
-                
-                train_params.append(transform_param)
-                test_params.append(transform_param)
                 
                 node.include_in = "TRAIN"
                 train_string = layer_template(node, tops, bottoms, train_params)
