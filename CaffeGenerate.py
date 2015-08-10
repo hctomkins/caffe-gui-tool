@@ -70,6 +70,7 @@ def conv_template(node):
 %s
     }
 ''' % (node.num_output, node.bias_term, padding_string, kernel_string, stride_string, weight_filler_string, bias_filler_string)
+    #loadable
     return string
 
 def data_param_template(node, source):
@@ -133,24 +134,34 @@ def pool_template(node):
         stride: %i
     }
 ''' % (node.mode, node.kernel_size, node.stride)
-
+    #Loadable
     return string
 
-# TODO: Finish MVN
-def mvntemplate(name, bottom, normalize_variance, across_channels, eps):
-    string = \
-        'layer {\n\
-        name: "%s"\n\
-        type: "MVN"\n\
-        bottom: "%s"\n\
-        top: "%s"\n\
-        mvn_param  {\n\
-        normalize_variance: %s\n\
-        across_channels: %s\n\
-        eps: %f\n\
-        }\n\
-        }\n' \
-        % (name, bottom, name, normalize_variance, across_channels, eps)
+
+def mvntemplate(node):
+    string = '''\
+        mvn_param  {
+        normalize_variance: %s
+        across_channels: %s
+        eps: %f
+        }
+''' % (node.normalize_variance, node.across_channels, node.eps)
+    #Loadable
+    return string
+
+def eltwisetemplate(node):
+    if node.operation == 'PROD':
+        coeffstring = 'coeff: %f'%node.coeff
+    elif node.operation == 'SUM':
+        coeffstring = 'stable_prod_grad: %i'%node.stable_prod_grad
+    else:
+        coeffstring = ''
+    string = '''\
+        eltwise_param  {
+        operation: %s
+        %s
+        }
+''' % (node.operation, coeffstring)
     return string
 
 def FC_template(node):
@@ -534,6 +545,8 @@ class Solve(bpy.types.Operator):
                 dstring = ''
             elif node.bl_idname == 'PoolNodeType':
                 special_params.append(pool_template(node))
+            elif node.bl_idname == 'EltwiseNodeType':
+                special_params.append(eltwisetemplate(node))
             elif node.bl_idname == 'ConvNodeType':
                 special_params.append(conv_template(node))
             elif node.bl_idname == 'DeConvNodeType':
@@ -597,6 +610,8 @@ class Solve(bpy.types.Operator):
                                             solver=node.compmode)
                 configpath = node.configpath
                 solvername = node.solvername
+            elif node.bl_idname == 'MVNNodeType':
+                special_params.append(mvntemplate(node))
             elif string == 0:
                 print (node.bl_idname)
             if node.bl_idname != 'SolverNodeType':

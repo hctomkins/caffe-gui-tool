@@ -613,7 +613,7 @@ class EltwiseNode(Node, CaffeTreeNode):
     bl_label = 'Element-wise Node'
     # Icon identifier
     bl_icon = 'SOUND'
-
+    n_type = 'Eltwise'
     # === Custom Properties ===
     eltwiseOps  = [
         ("PROD", "PROD", "Eltwise prod: c(i) -> a(i)*b(i)"),
@@ -642,9 +642,9 @@ class EltwiseNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         layout.prop(self, "operation")    
         if self.operation == 'PROD':
-            layout.prop(self, "stable_prod_grad ")
+            layout.prop(self, "stable_prod_grad")
         elif self.operation == 'SUM':
-            layout.prop(self, "coeff  ")
+            layout.prop(self, "coeff")
             
 class ExpNode(Node, CaffeTreeNode):
     # === Basics ===
@@ -695,7 +695,7 @@ class MVNNode(Node, CaffeTreeNode):
     bl_label = 'MVN Node'
     # Icon identifier
     bl_icon = 'SOUND'
-
+    n_type = 'MVN'
     # === Custom Properties ===
     normalize_variance  = bpy.props.BoolProperty(default=True)
     across_channels  = bpy.props.BoolProperty(default=False)
