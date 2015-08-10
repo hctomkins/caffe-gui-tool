@@ -153,7 +153,7 @@ def getgpus():
         line = proc.stdout.readline()
         if line:
             # Process output here
-            lines.extend([line])
+            lines.append(line)
     return len(lines)
 ##################################
 
@@ -1615,6 +1615,23 @@ class SliceNode(Node, CaffeTreeNode):
 			
         self.draw_extra_params(context, layout)
 
+
+#// Return the current learning rate. The currently implemented learning rate
+#// policies are as follows:
+#//    - fixed: always return base_lr.
+#//    - step: return base_lr * gamma ^ (floor(iter / step))
+#//    - exp: return base_lr * gamma ^ iter
+#//    - inv: return base_lr * (1 + gamma * iter) ^ (- power)
+#//    - multistep: similar to step but it allows non uniform steps defined by
+#//      stepvalue
+#//    - poly: the effective learning rate follows a polynomial decay, to be
+#//      zero by the max_iter. return base_lr (1 - iter/max_iter) ^ (power)
+#//    - sigmoid: the effective learning rate follows a sigmod decay
+#//      return base_lr ( 1/(1 + exp(-gamma * (iter - stepsize))))
+#//
+#// where base_lr, max_iter, gamma, step, stepvalue and power are defined
+#// in the solver parameter protocol buffer, and iter is the current iteration.
+
 class SolverNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
@@ -1625,51 +1642,123 @@ class SolverNode(Node, CaffeTreeNode):
     bl_label = 'Solver Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    modes = [
-        ("NAG", "NAG", "Nesterovs Accelerated Gradient"),
-        ("ADAGRAD", "ADAGRAD", "Adaptive gradient descent"),
-        ("SGD", "SGD", "Stochastic Gradient Descent")
-    ]
-    computemodes = [
-        ("GPU", "GPU", "GPU"),
-        ("CPU", "CPU", "CPU")
-    ]
+    
+    lr_policies = [("fixed", "fixed", "Fixed"),
+                   ("step", "step", "Step"),
+                   ("exp", "exp", "Exponential"),
+                   ("inv", "inv", "Inverse"),
+                   ("multistep", "multistep", "Multi Step"),
+                   ("poly", "poly", "Polinomial"),
+                   ("sigmoid", "sigmoid", "Sigmoid")]
+                   
+    regularization_types = [("L1", "L1", "L1"), ("L2", "L2", "L2")]
+    
+    
     gputoggles = []
     gpunum = getgpus()
     gpufailed = 0
+
     if gpunum == 'Error':
         gpufailed = 1
-        gpunum = 1
-    for gpu in range(gpunum):
-        gputoggles.extend(['GPU %i'%gpu])
+    else:
+        for gpu in range(gpunum):
+            gpu_name = 'GPU %i'%gpu
+            gputoggles.append((gpu_name, gpu_name, gpu_name))
+
+
+
     # === Custom Properties ===
     solvername = bpy.props.StringProperty()
-    solver = bpy.props.EnumProperty(name="Mode", default='SGD', items=modes)
-    compmode = bpy.props.EnumProperty(name="Compute Mode", default='GPU', items=computemodes)
-    gpus = bpy.props.BoolVectorProperty(name = "GPU(s)",description = "Gpus to use",size=gpunum)
-    accum = bpy.props.BoolProperty(name='Accumulate Gradients',default=True)
-    accumiters = bpy.props.IntProperty(name='Number of minibatches to Accumulate',default=1 ,min=1,soft_max=10)
-    testinterval = bpy.props.IntProperty(name='Test Interval',default=500, min=1, soft_max=2000)
-    testruns = bpy.props.IntProperty(name='Test Batches',default=50, min=1, soft_max=200)
-    displayiter = bpy.props.IntProperty(name='Display iter.',default=100, min=1, soft_max=5000)
-    maxiter = bpy.props.IntProperty(name='Final iteration',default=50000, min=5, soft_max=100000)
-    learningrate = bpy.props.FloatProperty(name = 'Learning rate',default=0.01, min=0.001, soft_max=1)
-    snapshotiter = bpy.props.IntProperty(name = 'Snapshot iteration',default=10000, min=10, soft_max=50000)
-    snapshotpath = bpy.props.StringProperty \
+
+    test_iter = bpy.props.IntProperty(name='Test Iterations',default=100, min=1, description="How many forward passes the test should carry out")
+    test_interval = bpy.props.IntProperty(name='Test Interval', default=500, min=1, description="Carry out testing every test interval iterations")
+    test_compute_loss = bpy.props.BoolProperty(name='Test Compute Loss',default=False, description="Compute loss in testing")
+    test_initialization = bpy.props.BoolProperty(name='Test Initialization',default=True,
+                          description="run an initial test pass before the first iteration, ensuring memory availability and printing the starting value of the loss.")
+    base_lr = bpy.props.FloatProperty(name='Base Learning rate',default=0.01, min=0)
+    display = bpy.props.IntProperty(name='Display',default=100, min=0, description="The number of iterations between displaying info. If display = 0, no info will be displayed")
+    average_loss = bpy.props.IntProperty(name='Average Loss',default=1, min=1, description="Display the loss averaged over the last average_loss iterations")
+    max_iter = bpy.props.IntProperty(name='Maximum Iterations', default=50000, min=1)
+    iter_size = bpy.props.IntProperty(name='Iteration Size', default=1, min=1, description="Accumulate gradients over iter_size x batch_size instances")
+
+    lr_policy = bpy.props.EnumProperty(name='Learning rate Policy', items=lr_policies, default='step')
+    gamma = bpy.props.FloatProperty(name='Gamma', default=0.0001, min=0)
+    power = bpy.props.FloatProperty(name='Power', default=0.75)
+    momentum = bpy.props.FloatProperty(name='Momentum', default=0.9, min=0)
+    weight_decay = bpy.props.FloatProperty(name='Weight Decay', default=0.0005, min=0)
+
+    regularization_type = bpy.props.EnumProperty(name='Regularization type', items=regularization_types, default='L2')
+
+    stepsize = bpy.props.IntProperty(name='Step size', default=5000, min=1)
+
+    #TODO: Finish stepvalue and multistep
+    #stepvalue
+
+    #TODO: Maybe add clip gradients
+
+    snapshot = bpy.props.IntProperty(name='Snapshot Interval', default=0, min=0, description="The snapshot interval. 0 for no snapshot")
+    snapshot_prefix = bpy.props.StringProperty \
         (
-            name="Snapshot Data Path",
-            default="",
-            description="Give the path to the snapshot data",
-            subtype='DIR_PATH'
-        )
-    configpath = bpy.props.StringProperty \
+         name="Snapshot Path",
+         default="",
+         description="Give the path to the snapshot data",
+         subtype='DIR_PATH'
+         )
+
+    snapshot_diff = bpy.props.BoolProperty(name='Snapshot diff',default=False, description="Whether to snapshot diff in the results or not")
+
+#    snapshot_formats = [("HDF5", "HDF5", "HDF5"), ("BINARYPROTO", "BINARYPROTO", "BINARYPROTO")]
+#    snapshot_format = bpy.props.EnumProperty(name='Snapshot format', items=snapshot_formats, default='BINARYPROTO')
+
+    solver_modes = [("GPU", "GPU", "GPU"), ("CPU", "CPU", "CPU")]
+    solver_mode =  bpy.props.EnumProperty(name='Solver mode', items=solver_modes, default='GPU')
+    gpus = bpy.props.EnumProperty(name="GPU",description="GPU to use", items=gputoggles)
+
+    use_random_seed = bpy.props.BoolProperty(name='Use Random seed',default=False)
+    random_seed = bpy.props.IntProperty(name='Random seed', default=10, description="The seed with which the Solver will initialize the Caffe random number generator")
+
+    solver_types = [("NESTEROV", "NESTEROV", "Nesterovs Accelerated Gradient"),
+                    ("ADAGRAD", "ADAGRAD", "Adaptive gradient descent"),
+                    ("SGD", "SGD", "Stochastic Gradient Descent")]
+    solver_type = bpy.props.EnumProperty(name='Solver type', items=solver_types, default='SGD')
+
+    delta = bpy.props.FloatProperty(name='Delta', default=1e-8, min=0, description="Numerical stability for AdaGrad")
+
+    debug_info = bpy.props.BoolProperty(name='Debug info', default=False)
+
+    snapshot_after_train = bpy.props.BoolProperty(name='Snapshot after train', default=True, description="If false, don't save a snapshot after training finishes")
+
+
+
+#    solver = bpy.props.EnumProperty(name="Mode", default='SGD', items=modes)
+#    compmode = bpy.props.EnumProperty(name="Compute Mode", default='GPU', items=computemodes)
+#
+#    accum = bpy.props.BoolProperty(name='Accumulate Gradients',default=True)
+#    accumiters = bpy.props.IntProperty(name='Number of minibatches to Accumulate',default=1 ,min=1,soft_max=10)
+#    testinterval = bpy.props.IntProperty(name='Test Interval',default=500, min=1, soft_max=2000)
+#    testruns = bpy.props.IntProperty(name='Test Batches',default=50, min=1, soft_max=200)
+#    displayiter = bpy.props.IntProperty(name='Display iter.',default=100, min=1, soft_max=5000)
+#    maxiter = bpy.props.IntProperty(name='Final iteration',default=50000, min=5, soft_max=100000)
+#    learningrate = bpy.props.FloatProperty(name = 'Learning rate',default=0.01, min=0.001, soft_max=1)
+#    snapshotiter = bpy.props.IntProperty(name = 'Snapshot iteration',default=10000, min=10, soft_max=50000)
+#    snapshotpath = bpy.props.StringProperty \
+#        (
+#            name="Snapshot Data Path",
+#            default="",
+#            description="Give the path to the snapshot data",
+#            subtype='DIR_PATH'
+#        )
+
+
+
+    config_path = bpy.props.StringProperty \
         (
             name="Configuration Data Path",
             default="",
             description="Give the path to the config data",
             subtype='DIR_PATH'
         )
-    caffexec = bpy.props.StringProperty \
+    caffe_exec = bpy.props.StringProperty \
         (
         name="Caffe Tools Folder",
         default="",
@@ -1677,8 +1766,8 @@ class SolverNode(Node, CaffeTreeNode):
         subtype='DIR_PATH'
         )
 
-    def init(self, context):
-        self.inputs.new('LossSocketType', "Input Loss")
+#    def init(self, context):
+#        self.inputs.new('LossSocketType', "Input Loss")
 
 
     # Copy function to initialize a copied node from an existing one.
@@ -1689,50 +1778,112 @@ class SolverNode(Node, CaffeTreeNode):
     def free(self):
         print("Removing node ", self, ", Goodbye!")
 
-    def update(self):
-        x = 0
-        for input in self.inputs:
-            if input.is_linked == False:
-                x += 1
-                if x > 1:
-                    self.inputs.remove(input)
-        if x == 0:
-            self.inputs.new('LossSocketType', "Input Loss")
+#    def update(self):
+#        x = 0
+#        for input in self.inputs:
+#            if input.is_linked == False:
+#                x += 1
+#                if x > 1:
+#                    self.inputs.remove(input)
+#        if x == 0:
+#            self.inputs.new('LossSocketType', "Input Loss")
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
+        
         layout.prop(self, "solvername")
-        layout.prop(self, "solver")
-        layout.prop(self, "compmode")
+        layout.prop(self, "test_iter")
+        layout.prop(self, "test_interval")
+        layout.prop(self, "test_compute_loss")
+        layout.prop(self, "test_initialization")
+        layout.prop(self, "base_lr")
+        layout.prop(self, "display")
+        layout.prop(self, "average_loss")
+        layout.prop(self, "max_iter")
+        layout.prop(self, "iter_size")
+        
+        layout.prop(self, "lr_policy")
+        
+        if self.lr_policy == 'step':
+            layout.prop(self, "gamma")
+            layout.prop(self, "stepsize")
+        elif self.lr_policy == 'exp':
+            layout.prop(self, "gamma")
+        elif self.lr_policy == 'inv':
+            layout.prop(self, "gamma")
+            layout.prop(self, "power")
+        elif self.lr_policy == 'multistep':
+            layout.label("NOT IMPLEMENTED", icon='ERROR')
+        elif self.lr_policy == 'poly':
+            layout.prop(self, "power")
+        elif self.lr_policy == 'sigmoid':
+            layout.prop(self, "gamma")
+            layout.prop(self, "stepsize")
 
-        ########################GPUS
-        if not self.gpufailed:
-            layout.label("Multiple GPUs req. parallel caffe branch",icon='ERROR')
-        else:
-            layout.label("WARNING: GPU NOT DETECTED",icon='ERROR')
-            layout.label("Check 'nvidia-smi' command can be run",icon='ERROR')
-        if self.compmode == 'GPU':
-            for i,name in enumerate(self.gputoggles):
-                layout.prop(self, "gpus",index=i,text=name,toggle=True)
-        ###############Accumulate batches
-        layout.prop(self, "accum")
-        if self.accum:
-            layout.prop(self,"accumiters")
-        #layout.prop(self, "gpu")
-        layout.prop(self, "testinterval")
-        layout.prop(self, "testruns")
-        layout.prop(self, "displayiter")
-        layout.prop(self, "maxiter")
-        layout.prop(self, "learningrate")
-        layout.prop(self, "snapshotiter")
-        layout.prop(self, "snapshotpath")
-        layout.prop(self, "configpath")
-        layout.prop(self, "caffexec")
-        # Detail buttons in the sidebar.
-        # If this function is not defined, the draw_buttons function is used instead
+        layout.prop(self, "momentum")
+        layout.prop(self, "weight_decay")
+        layout.prop(self, "regularization_type")
 
-        # Optional: custom label
-        # Explicit user label overrides this, but here we can define a label dynamically
+        layout.prop(self, "snapshot")
+        layout.prop(self, "snapshot_prefix")
+        layout.prop(self, "snapshot_diff")
+#        layout.prop(self, "snapshot_format")
+        layout.prop(self, "snapshot_after_train")
+        
+        layout.prop(self, "solver_mode")
+        if self.solver_mode == 'GPU':
+            if self.gpufailed:
+                layout.label("WARNING: GPU NOT DETECTED",icon='ERROR')
+                layout.label("Check 'nvidia-smi' command can be run",icon='ERROR')
+            else:
+                layout.prop(self, "gpus")
+
+        layout.prop(self, "use_random_seed")
+        if self.use_random_seed:
+            layout.prop(self, "random_seed")
+
+        layout.prop(self, "solver_type")
+
+        if self.solver_type == 'ADAGRAD':
+            layout.prop(self, "delta")
+                
+        layout.prop(self, "debug_info")
+
+        layout.prop(self, "config_path")
+        layout.prop(self, "caffe_exec")
+
+#        layout.prop(self, "display")
+#        layout.prop(self, "display")
+#        
+#        
+#        
+#        layout.prop(self, "solvername")
+#        layout.prop(self, "solver")
+#        layout.prop(self, "compmode")
+#
+#        ########################GPUS
+#        if not self.gpufailed:
+#            layout.label("Multiple GPUs req. parallel caffe branch",icon='ERROR')
+#        else:
+#            layout.label("WARNING: GPU NOT DETECTED",icon='ERROR')
+#            layout.label("Check 'nvidia-smi' command can be run",icon='ERROR')
+#        if self.compmode == 'GPU':
+#            for i,name in enumerate(self.gputoggles):
+#                layout.prop(self, "gpus",index=i,text=name,toggle=True)
+#        ###############Accumulate batches
+#        layout.prop(self, "accum")
+#        if self.accum:
+#            layout.prop(self,"accumiters")
+#        #layout.prop(self, "gpu")
+#        layout.prop(self, "testinterval")
+#        layout.prop(self, "testruns")
+#        layout.prop(self, "displayiter")
+#        layout.prop(self, "maxiter")
+#        layout.prop(self, "learningrate")
+#        layout.prop(self, "snapshotiter")
+#        layout.prop(self, "snapshotpath")
+#        layout.prop(self, "configpath")
+#        layout.prop(self, "caffexec")
 
 import nodeitems_utils
 from nodeitems_utils import NodeCategory, NodeItem

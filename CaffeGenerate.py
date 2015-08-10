@@ -1,5 +1,5 @@
 #TODO: Add properties to solver
-
+#TODO: snapshot_format not available in this version. update later.
 
 __author__ = 'hugh'
 bl_info = {
@@ -254,53 +254,66 @@ def slicetemplate(node):
 ''' % (node.axis, slice_points_string)
     return string
 
-def solvertemplate(type, learningrate, testinterval, testruns, maxiter, displayiter, snapshotiter, snapshotname,
-                snapshotpath, configpath, solvername, itersize, solver='GPU'):
-    snapshotprefix = snapshotpath + snapshotname
-    netpath = configpath + '%s_train_test.prototxt' % solvername
-    if type == 'ADAGRAD':
-        tsstring = '''\
-lr_policy: "step"
-gamma: 0.1
-stepsize: 10000
-weight_decay: 0.0005
-solver_type: ADAGRAD
-'''
-    elif type == 'NAG':
-        tsstring = '''\
-lr_policy: "step"\n\
-gamma: 0.1
-stepsize: 10000
-weight_decay: 0.0005
-momentum: 0.95
-solver_type: NESTEROV
-'''
-    elif type == 'SGD':
-        tsstring = '''\
-lr_policy: "step"
-gamma: 0.1
-stepsize: 10000
-weight_decay: 0.0005
-momentum: 0.95
-'''
-    else:
-        print ('ERROR')
-        time.sleep(1000000)
-    genericstring = '''\
+
+def solver_template(node):
+    net_path = node.config_path + '%s_train_test.prototxt' % node.solvername
+    
+    lr_string = ''
+    if node.lr_policy == 'step':
+        lr_string += 'gamma: %i\n' % node.gamma
+        lr_string += 'stepsize: %i\n' % node.stepsize
+    elif node.lr_policy == 'exp':
+        lr_string += 'gamma: %i\n' % node.gamma
+    elif node.lr_policy == 'inv':
+        lr_string += 'gamma: %i\n' % node.gamma
+        lr_string += 'power: %i\n' % node.power
+    elif node.lr_policy == 'multistep':
+        pass
+    elif node.lr_policy == 'poly':
+        lr_string += 'power: %i\n' % node.power
+    elif node.lr_policy == 'sigmoid':
+        lr_string += 'gamma: %i\n' % node.gamma
+        lr_string += 'stepsize: %i\n' % node.stepsize
+
+    random_seed_string = ''
+    if node.use_random_seed:
+        random_seed_string = 'random_seed: %i' % node.random_seed
+
+    delta_string = ''
+    if node.solver_type == 'ADAGRAD':
+        delta_string = 'delta %f' % node.delta
+
+
+
+    string = ''' \
 net: "%s"
 test_iter: %i
 test_interval: %i
+test_compute_loss: %i
+test_initialization: %i
 base_lr: %f
 display: %i
+average_loss: %i
 max_iter: %i
 iter_size: %i
+lr_policy: "%s"
+%s
+momentum: %f
+weight_decay: %f
+regularization_type: "%s"
 snapshot: %i
 snapshot_prefix: "%s"
+snapshot_diff: %i
 solver_mode: %s
-''' % (netpath, testruns, testinterval, learningrate, displayiter, maxiter, itersize, snapshotiter, snapshotprefix,
-        solver)
-    solverstring = genericstring + tsstring
-    return solverstring
+%s
+solver_type: %s
+%s
+debug_info: %i
+snapshot_after_train: %i
+''' % (net_path, node.test_iter, node.test_interval, node.test_compute_loss, node.test_initialization, node.base_lr, node.display, node.average_loss, node.max_iter,
+       node.iter_size, node.lr_policy, lr_string, node.momentum, node.weight_decay, node.regularization_type, node.snapshot, node.snapshot_prefix, node.snapshot_diff,
+       node.solver_mode, random_seed_string, node.solver_type, delta_string, node.debug_info, node.snapshot_after_train)
+    return "\n".join(filter(lambda x: x.strip(), string.splitlines())) + "\n"
 
 
 def deploytemplate(batch, channels, size, datain):
@@ -318,17 +331,11 @@ input_dim: %i
 def scripttemplate(caffepath, configpath, solvername, gpus, solver):
     gpustring = ''
     usedcount = 0
-    for gpu, used in enumerate(gpus):
-        if used:
-            if usedcount != 0:
-                gpustring += ',' + str(gpu)
-            else:
-                gpustring += str(gpu)
-            usedcount += 1
-    if solver == 'GPU':
-        extrastring = '--gpu=%s' % gpustring
-    else:
-        extrastring = ''
+    
+    extrastring = ''
+    if solver == 'GPU' and gpus:
+        extrastring = '--gpu=%s' % gpus
+    
     solverstring = configpath + '%s_solver.prototxt' % solvername
     caffestring = caffepath + 'caffe'
     string = "#!/usr/bin/env sh \n '%s' train --solver='%s' %s" % (caffestring, solverstring, extrastring)
@@ -559,13 +566,10 @@ class Solve(bpy.types.Operator):
                 string = ''
                 dstring = ''
             elif node.bl_idname == 'SolverNodeType':
-                solverstring = solvertemplate(node.solver, node.learningrate, node.testinterval, node.testruns,
-                                            node.maxiter,
-                                            node.displayiter, node.snapshotiter, node.solvername, node.snapshotpath,
-                                            node.configpath, node.solvername, node.accumiters, solver=node.compmode)
-                scriptstring = scripttemplate(node.caffexec, node.configpath, node.solvername, node.gpus,
-                                            solver=node.compmode)
-                configpath = node.configpath
+                solverstring = solver_template(node)
+                scriptstring = scripttemplate(node.caffe_exec, node.config_path, node.solvername, node.gpus,
+                                            solver=node.solver_mode)
+                configpath = node.config_path
                 solvername = node.solvername
             elif string == 0:
                 print (node.bl_idname)
