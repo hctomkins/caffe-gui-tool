@@ -375,13 +375,7 @@ class CaffeTreeNode:
               ("TEST", "TEST", "Test only"),
               ("BOTH", "BOTH", "Both")]
     include_in = bpy.props.EnumProperty(items=phases, default="BOTH")
-    
-    use_custom_weight = bpy.props.BoolProperty(name="Use custom weights", default=False)
-    custom_weight = bpy.props.StringProperty(name="Custom weights",
-                                             default="",
-                                             description="Custom weights and bias from file",
-                                             subtype='FILE_PATH')
-    
+
     def draw_include_in(self, layout):
         layout.prop(self, "include_in")
 
@@ -817,14 +811,8 @@ class ConvNode(Node, CaffeTreeNode):
         else:
             layout.prop(self, "stride_h")
             layout.prop(self, "stride_w")
-        
-        layout.prop(self, "use_custom_weight")
-        if self.use_custom_weight:
-            layout.prop(self, "custom_weight")
-        else:
             layout.label("Weight Filler")
             self.weight_filler.draw(context, layout)
-        
             if self.bias_term:
                 layout.label("bias Filler")
                 self.bias_filler.draw(context, layout)

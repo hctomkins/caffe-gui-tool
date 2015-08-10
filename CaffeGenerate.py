@@ -59,9 +59,6 @@ def conv_template(node):
         stride_string = tab2 + 'stride_h: %i\n' % node.stride_h
         stride_string += tab2 + 'stride_w: %i\n' % node.stride_w
 
-    weight_filler_string = ''
-    bias_filler_string = ''
-    if not node.use_custom_weight:
         weight_filler_string = getFillerString(node.weight_filler, 'weight_filler')
         bias_filler_string = getFillerString(node.bias_filler, 'bias_filler')
 
@@ -394,15 +391,7 @@ def layer_template(node, tops, bottoms, special_params):
     params_string = '\n'.join(get_params(node))
     special_params_string = '\n'.join(special_params)
     include_in_string = get_include_in(node)
-    
-    custom_weight_string = ''
-    if node.use_custom_weight:
-        with open(node.custom_weight) as f:
-            custom_weight_string = f.read()
-    
-        custom_weight_string = '\n'.join(tab + r for r in custom_weight_string.split('\n'))
-    
-    
+
     string = '''\
 layer {
     name: "%s"
@@ -412,9 +401,8 @@ layer {
 %s
 %s
 %s
-%s
 }
-''' % (node.name, node.n_type, tops_string, bottoms_string, params_string, special_params_string, include_in_string, custom_weight_string)
+''' % (node.name, node.n_type, tops_string, bottoms_string, params_string, special_params_string, include_in_string)
     
     return "\n".join(filter(lambda x: x.strip(), string.splitlines())) + "\n"
 
