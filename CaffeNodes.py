@@ -342,7 +342,8 @@ class DataNode(Node, CaffeTreeNode):
     # === Custom Properties ===
     
     db_type = bpy.props.EnumProperty(name="Database type", description="Type of Data", items=DBs, default='HDF5Data')
-    batch_size = bpy.props.IntProperty(min=1, default=100, soft_max=500)
+    train_batch_size = bpy.props.IntProperty(min=1, default=100)
+    test_batch_size = bpy.props.IntProperty(min=1, default=100)
     
     def update_tops(self, context):
         while len(self.outputs) < self.output_amount:
@@ -430,7 +431,8 @@ class DataNode(Node, CaffeTreeNode):
             layout.prop(self, "train_path")
             layout.prop(self, "test_path")
 
-        layout.prop(self, "batch_size")
+        layout.prop(self, "train_batch_size")
+        layout.prop(self, "test_batch_size")
         
         
         if self.db_type in ('ImageData', 'LMDB', 'LEVELDB'):

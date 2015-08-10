@@ -1,5 +1,4 @@
 #TODO: Add properties to solver
-#TODO: Add train/test batch size in data layer
 
 
 __author__ = 'hugh'
@@ -80,7 +79,7 @@ def conv_template(node):
 ''' % (node.num_output, node.bias_term, padding_string, kernel_string, stride_string, weight_filler_string, bias_filler_string)
     return string
 
-def data_param_template(node, source):
+def data_param_template(node, source, batch_size):
     string = '''\
     data_param {
         source: "%s"
@@ -88,10 +87,10 @@ def data_param_template(node, source):
         batch_size: %i
         rand_skip: %i
     }
-''' % (source, node.db_type, node.batch_size, node.rand_skip)
+''' % (source, node.db_type, batch_size, node.rand_skip)
     return string
 
-def image_data_param_template(node, source):
+def image_data_param_template(node, source, batch_size):
     string = '''\
     image_data_param {
         source: "%s"
@@ -102,7 +101,7 @@ def image_data_param_template(node, source):
         new_width: %i
         is_color: %i
     }
-''' % (source, node.batch_size, node.rand_skip, node.shuffle, node.new_height, node.new_width, node.is_color)
+''' % (source, batch_size, node.rand_skip, node.shuffle, node.new_height, node.new_width, node.is_color)
     return string
 
 
@@ -122,14 +121,14 @@ def transform_param_template(node):
 
     return  string
 
-def hdf5_data_template(node, source):
+def hdf5_data_template(node, source, batch_size):
     string = '''\
     hdf5_data_param {
         source: "%s"
         batch_size: %i
         shuffle: %i
     }
-''' % (source, node.batch_size, node.shuffle)
+''' % (source, batch_size, node.shuffle)
 
     return string
 
@@ -480,19 +479,19 @@ class Solve(bpy.types.Operator):
                 node.n_type = node.db_type
 
                 if node.db_type in ('LMDB', 'LEVELDB'):
-                    train_params = [data_param_template(node, node.train_path)]
-                    test_params = [data_param_template(node, node.test_path)]
+                    train_params = [data_param_template(node, node.train_path, node.train_batch_size)]
+                    test_params = [data_param_template(node, node.test_path, node.test_batch_size)]
                     node.n_type = 'Data'
                     train_params.append(transform_param)
                     test_params.append(transform_param)
                 elif node.db_type == 'ImageData':
-                    train_params = [image_data_param_template(node, node.train_data)]
-                    test_params = [image_data_param_template(node, node.test_data)]
+                    train_params = [image_data_param_template(node, node.train_data, node.train_batch_size)]
+                    test_params = [image_data_param_template(node, node.test_data, node.test_batch_size)]
                     train_params.append(transform_param)
                     test_params.append(transform_param)
                 elif node.db_type == 'HDF5Data':
-                    train_params = [hdf5_data_template(node, node.train_data)]
-                    test_params = [hdf5_data_template(node, node.test_data)]
+                    train_params = [hdf5_data_template(node, node.train_data, node.train_batch_size)]
+                    test_params = [hdf5_data_template(node, node.test_data, node.test_batch_size)]
                 
                 node.include_in = "TRAIN"
                 train_string = layer_template(node, tops, bottoms, train_params)
