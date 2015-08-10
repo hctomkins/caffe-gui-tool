@@ -6,7 +6,8 @@ import bpy
 import subprocess
 from bpy.types import NodeTree, Node, NodeSocket
 
-def calcsize(self, context,axis='x'):
+
+def calcsize(self, context, axis='x'):
     '''NOTE - this function works out the dimensions of an image by the time it has reached a certain layer.
     It traverses all the layers, builds up several lists about the properties of each layer, then computes the
     size up to a given layer.'''
@@ -17,7 +18,7 @@ def calcsize(self, context,axis='x'):
         node.inputs[0].links[0].from_node
     except IndexError:
         return 0
-    #These are the lists to be populated
+    # These are the lists to be populated
     kernelsizes = []
     strides = []
     paddings = []
@@ -131,19 +132,19 @@ def calcsize(self, context,axis='x'):
         elif node.bl_idname == "DataNodeType":
             # When the data node is reached, we must be at the back of the nodetree, so start to work forwards
             square = 0
-            if node.db_type == 'ImageData' :
+            if node.db_type == 'ImageData':
                 if node.new_height == node.new_width:
                     square = 1
                 h = node.new_height
                 w = node.new_width
-            if node.db_type != 'ImageData' :
+            if node.db_type != 'ImageData':
                 if node.height == node.width:
                     square = 1
                 h = node.height
                 w = node.width
             if square:
                 x = float(w)
-            elif axis=='x':
+            elif axis == 'x':
                 x = float(w)
             else:
                 x = float(h)
@@ -161,13 +162,13 @@ def calcsize(self, context,axis='x'):
                 reversal = reversals[node]
                 if passes[node] == 0:
                     if fcsizes[node] == 0:
-                        if reversal ==0:
+                        if reversal == 0:
                             #########################
                             x = ((x + (2 * padding) - ksize) / stride + 1 - offset)
                             x = (x - poolsize) / poolstride + 1
                             ###################
                         else:
-                            x = (x*stride - stride) + ksize - 2*padding
+                            x = (x * stride - stride) + ksize - 2 * padding
                     else:
                         x = fcsizes[node]
             break
@@ -184,20 +185,24 @@ def calcsize(self, context,axis='x'):
             node = node.inputs[0].links[0].from_node
     return str(round(x, 2))
 
+
 ############################## Function for determining number of gpus
 def getgpus():
-    command = ['nvidia-smi','-L']
+    command = ['nvidia-smi', '-L']
     try:
-        proc = subprocess.Popen(command, bufsize=1,stdout=subprocess.PIPE, stderr=subprocess.STDOUT,universal_newlines=True)
+        proc = subprocess.Popen(command, bufsize=1, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                universal_newlines=True)
     except OSError:
         return 'Error'
     lines = []
-    while proc.poll() is None: # while alive
+    while proc.poll() is None:  # while alive
         line = proc.stdout.readline()
         if line:
             # Process output here
             lines.append(line)
     return len(lines)
+
+
 ##################################
 
 # Derived from the NodeTree base type, similar to Menu, Operator, Panel, etc.
@@ -209,6 +214,7 @@ class CaffeTree(NodeTree):
     # Label for nice name display
     bl_label = 'Caffe Node Tree'
     bl_icon = 'NODETREE'
+
 
 # Custom socket type
 class ImageSocket(NodeSocket):
@@ -238,17 +244,18 @@ class OutputSocket(NodeSocket):
     # Label for nice name display
     bl_label = 'Output Socket'
     # Enum items list
-    
+
     output_name = bpy.props.StringProperty(name='')
-    
+
     # Optional function for drawing the socket input value
     def draw(self, context, layout, node, text):
         layout.label("Optional name")
         layout.prop(self, "output_name")
-    
+
     # Socket color
     def draw_color(self, context, node):
         return (0.0, 1.0, 1.0, 0.5)
+
 
 class InPlaceOutputSocket(NodeSocket):
     # Description string
@@ -259,9 +266,11 @@ class InPlaceOutputSocket(NodeSocket):
     bl_label = 'In Place Output Socket'
     # Enum items list
 
-    output_name = bpy.props.StringProperty(name='',default='')
+    output_name = bpy.props.StringProperty(name='', default='')
+
     def draw(self, context, layout, node, text):
         layout.label(text)
+
     # Socket color
     def draw_color(self, context, node):
         return (0.0, 1.0, 1.0, 0.5)
@@ -284,6 +293,7 @@ class LabelSocket(NodeSocket):
     # Socket color
     def draw_color(self, context, node):
         return (0.5, 1.0, 0.2, 0.5)
+
 
 class LossSocket(NodeSocket):
     # Description string
@@ -322,6 +332,7 @@ class NAFlatSocket(NodeSocket):
     def draw_color(self, context, node):
         return (1.0, 0.2, 0.2, 0.5)
 
+
 class AFlatSocket(NodeSocket):
     # Description string
     '''AFlat socket type'''
@@ -345,9 +356,9 @@ class params_p_gw(bpy.types.PropertyGroup):
     name = bpy.props.StringProperty(name='Shared name')
     lr_mult = bpy.props.FloatProperty(default=1.0)
     decay_mult = bpy.props.FloatProperty(default=1.0)
-    
+
     def draw(self, context, layout):
-        #layout.prop(self, "name")
+        # layout.prop(self, "name")
         layout.prop(self, "lr_mult")
         layout.prop(self, "decay_mult")
 
@@ -358,9 +369,10 @@ class params_p_gb(bpy.types.PropertyGroup):
     decay_mult = bpy.props.FloatProperty(default=0.0)
 
     def draw(self, context, layout):
-        #layout.prop(self, "name")
+        # layout.prop(self, "name")
         layout.prop(self, "lr_mult")
         layout.prop(self, "decay_mult")
+
 
 class CaffeTreeNode:
     @classmethod
@@ -370,7 +382,7 @@ class CaffeTreeNode:
     extra_params = bpy.props.BoolProperty(name='Extra Parameters', default=False)
     weight_params = bpy.props.PointerProperty(type=params_p_gw)
     bias_params = bpy.props.PointerProperty(type=params_p_gb)
-    
+
     phases = [("TRAIN", "TRAIN", "Train only"),
               ("TEST", "TEST", "Test only"),
               ("BOTH", "BOTH", "Both")]
@@ -401,66 +413,66 @@ class DataNode(Node, CaffeTreeNode):
     DBs = [
         ("LMDB", "LMDB", "Lmdb database"),
         ("LEVELDB", "LEVELDB", "LevelDB database"),
-        ("ImageData","ImageData","Image files"),
+        ("ImageData", "ImageData", "Image files"),
         ("HDF5Data", "HDF5Data", "HDF5 Data")
     ]
     # === Custom Properties ===
-    
+
     db_type = bpy.props.EnumProperty(name="Database type", description="Type of Data", items=DBs, default='HDF5Data')
     train_batch_size = bpy.props.IntProperty(min=1, default=100)
     test_batch_size = bpy.props.IntProperty(min=1, default=100)
 
-    train_path = bpy.props.StringProperty (
+    train_path = bpy.props.StringProperty(
         name="Train Data Path",
         default="",
         description="Get the path to the data",
         subtype='DIR_PATH'
     )
 
-    test_path = bpy.props.StringProperty (
+    test_path = bpy.props.StringProperty(
         name="Test Data Path",
         default="",
         description="Get the path to the data",
         subtype='DIR_PATH'
     )
-    
-    train_data = bpy.props.StringProperty (
+
+    train_data = bpy.props.StringProperty(
         name="Train Data Path",
         default="",
         description="Get the path to the data",
         subtype='FILE_PATH'
     )
-                                           
-    test_data = bpy.props.StringProperty (
-         name="Test Data Path",
-         default="",
-         description="Get the path to the data",
-         subtype='FILE_PATH'
+
+    test_data = bpy.props.StringProperty(
+        name="Test Data Path",
+        default="",
+        description="Get the path to the data",
+        subtype='FILE_PATH'
     )
 
     # Transformation params
     scale = bpy.props.FloatProperty(default=1.0, min=0)
-    mirror = bpy.props.BoolProperty(name='Random Mirror',default=False)
-    use_mean_file = bpy.props.BoolProperty(name='Use mean file',default=False)
-    mean_file = bpy.props.StringProperty (
+    mirror = bpy.props.BoolProperty(name='Random Mirror', default=False)
+    use_mean_file = bpy.props.BoolProperty(name='Use mean file', default=False)
+    mean_file = bpy.props.StringProperty(
         name="Mean File Path",
         default="",
         description="Mean file location",
         subtype='FILE_PATH'
     )
     # TODO: Add Mean Value and random crop
-    
+
     # Image data params
-    new_height = bpy.props.IntProperty(name="New image height",min=0, default=0, soft_max=1000)
-    new_width = bpy.props.IntProperty(name="New image width",min=0, default=0, soft_max=1000)
-    height = bpy.props.IntProperty(name="Image height",min=0, default=0, soft_max=1000)
-    width = bpy.props.IntProperty(name="Image width",min=0, default=0, soft_max=1000)
-    is_color = bpy.props.BoolProperty(name="Is color image",default=True)
+    new_height = bpy.props.IntProperty(name="New image height", min=0, default=0, soft_max=1000)
+    new_width = bpy.props.IntProperty(name="New image width", min=0, default=0, soft_max=1000)
+    height = bpy.props.IntProperty(name="Image height", min=0, default=0, soft_max=1000)
+    width = bpy.props.IntProperty(name="Image width", min=0, default=0, soft_max=1000)
+    is_color = bpy.props.BoolProperty(name="Is color image", default=True)
     # For Image data + HDF5 data
     shuffle = bpy.props.BoolProperty(name='Shuffle', default=False)
-    
+
     # For Data + Image data
-    rand_skip = bpy.props.IntProperty(name="Random skip",min=0, default=0, soft_max=1000)
+    rand_skip = bpy.props.IntProperty(name="Random skip", min=0, default=0, soft_max=1000)
 
     # TODO: Add non supervised property
 
@@ -480,7 +492,7 @@ class DataNode(Node, CaffeTreeNode):
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
         layout.prop(self, "db_type")
-        
+
         if self.db_type in ('ImageData', 'HDF5Data'):
             layout.prop(self, "train_data")
             layout.prop(self, "test_data")
@@ -490,8 +502,7 @@ class DataNode(Node, CaffeTreeNode):
 
         layout.prop(self, "train_batch_size")
         layout.prop(self, "test_batch_size")
-        
-        
+
         if self.db_type in ('ImageData', 'LMDB', 'LEVELDB'):
             layout.label("Transformation Parameters")
             layout.prop(self, "scale")
@@ -499,7 +510,7 @@ class DataNode(Node, CaffeTreeNode):
             layout.prop(self, "use_mean_file")
             if self.use_mean_file:
                 layout.prop(self, "mean_file")
-        
+
         layout.label("Special Parameters")
         if self.db_type == 'ImageData':
             layout.prop(self, "shuffle")
@@ -528,11 +539,11 @@ class filler_p_g(bpy.types.PropertyGroup):
              ("xavier", "xavier", "Xavier dist"),
              ("msra", "msra", "MSRA dist"),
              ("bilinear", "bilinear", "Bi-linear upsample weights")]
-             
+
     vnormtypes = [("FAN_IN", "FAN_IN", "Constant val"),
                   ("FAN_OUT", "FAN_OUT", "Uniform dist"),
                   ("AVERAGE", "AVERAGE", "Gaussian dist")]
-    
+
     type = bpy.props.EnumProperty(name='Type', items=types, default='xavier')
     value = bpy.props.FloatProperty(default=0.0, soft_max=1000.0, soft_min=-1000.0)
     min = bpy.props.FloatProperty(default=0.0, soft_max=1000.0, soft_min=-1000.0)
@@ -545,7 +556,7 @@ class filler_p_g(bpy.types.PropertyGroup):
 
     def draw(self, context, layout):
         layout.prop(self, "type")
-        
+
         if self.type == 'constant':
             layout.prop(self, "value")
         elif self.type in ('xavier', 'msra'):
@@ -560,6 +571,7 @@ class filler_p_g(bpy.types.PropertyGroup):
             layout.prop(self, "min")
             layout.prop(self, "max")
 
+
 class PoolNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
@@ -570,7 +582,7 @@ class PoolNode(Node, CaffeTreeNode):
     bl_label = 'Pooling Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = 'Pooling'
 
     # === Custom Properties ===
@@ -598,14 +610,15 @@ class PoolNode(Node, CaffeTreeNode):
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
-        if calcsize(self, context,axis='x') != calcsize(self, context,axis='y'):
+        if calcsize(self, context, axis='x') != calcsize(self, context, axis='y'):
             layout.label("image x,y output is %s,%s pixels" %
-                       (calcsize(self, context,axis='x'),calcsize(self, context,axis='y')))
+                         (calcsize(self, context, axis='x'), calcsize(self, context, axis='y')))
         else:
-            layout.label("image output is %s pixels" %calcsize(self, context,axis='x'))
+            layout.label("image output is %s pixels" % calcsize(self, context, axis='x'))
         layout.prop(self, "kernel_size")
         layout.prop(self, "stride")
         layout.prop(self, "mode")
+
 
 class EltwiseNode(Node, CaffeTreeNode):
     # === Basics ===
@@ -619,15 +632,15 @@ class EltwiseNode(Node, CaffeTreeNode):
     bl_icon = 'SOUND'
     n_type = 'Eltwise'
     # === Custom Properties ===
-    eltwiseOps  = [
+    eltwiseOps = [
         ("PROD", "PROD", "Eltwise prod: c(i) -> a(i)*b(i)"),
         ("SUM", "SUM", "Eltwise sum: c(i) -> a(i)+b(i)"),
         ("MAX", "MAX", "Eltwise max: c(i) -> max [a(i),b(i)]"),
     ]
-    coeff = bpy.props.FloatProperty(default=2.0,soft_max=10.0,min=0)
-    stable_prod_grad = bpy.props.BoolProperty(name='Stable(slower) gradient',default=1)
-    operation  = bpy.props.EnumProperty(name='Operation', default='SUM', items=eltwiseOps)
-    
+    coeff = bpy.props.FloatProperty(default=2.0, soft_max=10.0, min=0)
+    stable_prod_grad = bpy.props.BoolProperty(name='Stable(slower) gradient', default=1)
+    operation = bpy.props.EnumProperty(name='Operation', default='SUM', items=eltwiseOps)
+
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input blob A")
@@ -644,12 +657,13 @@ class EltwiseNode(Node, CaffeTreeNode):
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
-        layout.prop(self, "operation")    
+        layout.prop(self, "operation")
         if self.operation == 'PROD':
             layout.prop(self, "stable_prod_grad")
         elif self.operation == 'SUM':
             layout.prop(self, "coeff")
-            
+
+
 class ExpNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
@@ -664,10 +678,10 @@ class ExpNode(Node, CaffeTreeNode):
     n_type = 'Exp'
 
     # === Custom Properties ===
-    base = bpy.props.FloatProperty(default=-1.0,soft_max=10.0,min=0)
-    scale = bpy.props.FloatProperty(default=1.0,soft_max=10.0,min=0)
-    shift = bpy.props.FloatProperty(default=0.0,soft_max=10.0,min=-10)
-    
+    base = bpy.props.FloatProperty(default=-1.0, soft_max=10.0, min=0)
+    scale = bpy.props.FloatProperty(default=1.0, soft_max=10.0, min=0)
+    shift = bpy.props.FloatProperty(default=0.0, soft_max=10.0, min=-10)
+
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input blob")
@@ -683,11 +697,12 @@ class ExpNode(Node, CaffeTreeNode):
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
-        layout.prop(self, "base")    
-        layout.prop(self, "scale")    
+        layout.prop(self, "base")
+        layout.prop(self, "scale")
         layout.prop(self, "shift")
 
         self.draw_extra_params(context, layout)
+
 
 class MVNNode(Node, CaffeTreeNode):
     # === Basics ===
@@ -701,10 +716,10 @@ class MVNNode(Node, CaffeTreeNode):
     bl_icon = 'SOUND'
     n_type = 'MVN'
     # === Custom Properties ===
-    normalize_variance  = bpy.props.BoolProperty(default=True)
-    across_channels  = bpy.props.BoolProperty(default=False)
-    eps  = bpy.props.FloatProperty(default=1e-9,soft_max=1.0,min=1e-20)
-    
+    normalize_variance = bpy.props.BoolProperty(default=True)
+    across_channels = bpy.props.BoolProperty(default=False)
+    eps = bpy.props.FloatProperty(default=1e-9, soft_max=1.0, min=1e-20)
+
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input blob")
@@ -720,12 +735,13 @@ class MVNNode(Node, CaffeTreeNode):
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
-        layout.prop(self, "normalize_variance")    
-        layout.prop(self, "across_channels")    
+        layout.prop(self, "normalize_variance")
+        layout.prop(self, "across_channels")
         layout.prop(self, "eps")
-		
+
         self.draw_extra_params(context, layout)
-        
+
+
 class ConvNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
@@ -736,31 +752,31 @@ class ConvNode(Node, CaffeTreeNode):
     bl_label = 'Convolution Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = "Convolution"
 
     # === Custom Properties ===
-    
+
     num_output = bpy.props.IntProperty(name="Number of outputs", default=20, min=1, soft_max=300)
-    bias_term = bpy.props.BoolProperty(name='Include Bias term',default=True)
-    
+    bias_term = bpy.props.BoolProperty(name='Include Bias term', default=True)
+
     square_padding = bpy.props.BoolProperty(name="Equal x,y padding", default=True)
     pad = bpy.props.IntProperty(name="Padding", default=0, min=0, soft_max=5)
     pad_h = bpy.props.IntProperty(name="Padding height", default=0, min=0, soft_max=5)
     pad_w = bpy.props.IntProperty(name="Padding width", default=0, min=0, soft_max=5)
-    
+
     square_kernel = bpy.props.BoolProperty(name="Equal x,y kernel", default=True)
     kernel_size = bpy.props.IntProperty(name="Kernel size", default=5, min=1, soft_max=25)
     kernel_h = bpy.props.IntProperty(name="Kernel height", default=5, min=1, soft_max=25)
     kernel_w = bpy.props.IntProperty(name="Kernel width", default=5, min=1, soft_max=25)
-    
-    #TODO: Maybe add group
-    
+
+    # TODO: Maybe add group
+
     square_stride = bpy.props.BoolProperty(name="Equal x,y stride", default=True)
     stride = bpy.props.IntProperty(name="Stride", default=1, min=1, soft_max=5)
     stride_h = bpy.props.IntProperty(name="Stride height", default=1, min=1, soft_max=5)
     stride_w = bpy.props.IntProperty(name="Stride width", default=1, min=1, soft_max=5)
-    
+
     weight_filler = bpy.props.PointerProperty(type=filler_p_g)
     bias_filler = bpy.props.PointerProperty(type=filler_p_g)
 
@@ -768,7 +784,7 @@ class ConvNode(Node, CaffeTreeNode):
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
         self.outputs.new('OutputSocketType', "Output image")
-        self.color = [1, 0 ,1]
+        self.color = [1, 0, 1]
         self.use_custom_color = True
 
     # Copy function to initialize a copied node from an existing one.
@@ -782,22 +798,22 @@ class ConvNode(Node, CaffeTreeNode):
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
         #TODO: Finish calcsize
-        
-        if calcsize(self, context,axis='x') != calcsize(self, context,axis='y'):
+
+        if calcsize(self, context, axis='x') != calcsize(self, context, axis='y'):
             layout.label("image x,y output is %s,%s pixels" %
-                       (calcsize(self, context,axis='x'),calcsize(self, context,axis='y')))
+                         (calcsize(self, context, axis='x'), calcsize(self, context, axis='y')))
         else:
-            layout.label("image output is %s pixels" %calcsize(self, context,axis='x'))
+            layout.label("image output is %s pixels" % calcsize(self, context, axis='x'))
         layout.prop(self, "num_output")
         layout.prop(self, "bias_term")
-        
+
         layout.prop(self, "square_padding")
         if self.square_padding:
             layout.prop(self, "pad")
         else:
             layout.prop(self, "pad_h")
             layout.prop(self, "pad_w")
-        
+
         layout.prop(self, "square_kernel")
         if self.square_kernel:
             layout.prop(self, "kernel_size")
@@ -830,90 +846,91 @@ class DeConvNode(Node, CaffeTreeNode):
     bl_label = 'DeConvolution Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = "Deconvolution"
-    
+
     # === Custom Properties ===
-    
+
     num_output = bpy.props.IntProperty(name="Number of outputs", default=20, min=1, soft_max=300)
-    bias_term = bpy.props.BoolProperty(name='Include Bias term',default=True)
-    
+    bias_term = bpy.props.BoolProperty(name='Include Bias term', default=True)
+
     square_padding = bpy.props.BoolProperty(name="Equal x,y padding", default=True)
     pad = bpy.props.IntProperty(name="Padding", default=0, min=0, soft_max=5)
     pad_h = bpy.props.IntProperty(name="Padding height", default=0, min=0, soft_max=5)
     pad_w = bpy.props.IntProperty(name="Padding width", default=0, min=0, soft_max=5)
-    
+
     square_kernel = bpy.props.BoolProperty(name="Equal x,y kernel", default=True)
     kernel_size = bpy.props.IntProperty(name="Kernel size", default=5, min=1, soft_max=25)
     kernel_h = bpy.props.IntProperty(name="Kernel height", default=5, min=1, soft_max=25)
     kernel_w = bpy.props.IntProperty(name="Kernel width", default=5, min=1, soft_max=25)
-    
-    #TODO: Maybe add group
-    
+
+    # TODO: Maybe add group
+
     square_stride = bpy.props.BoolProperty(name="Equal x,y stride", default=True)
     stride = bpy.props.IntProperty(name="Stride", default=1, min=1, soft_max=5)
     stride_h = bpy.props.IntProperty(name="Stride height", default=1, min=1, soft_max=5)
     stride_w = bpy.props.IntProperty(name="Stride width", default=1, min=1, soft_max=5)
-    
+
     weight_filler = bpy.props.PointerProperty(type=filler_p_g)
     bias_filler = bpy.props.PointerProperty(type=filler_p_g)
-    
+
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
         self.outputs.new('OutputSocketType', "Output image")
-        self.color = [1, 0 ,1]
+        self.color = [1, 0, 1]
         self.use_custom_color = True
-    
+
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
         print("Copying from node ", node)
-    
+
     # Free function to clean up on removal.
     def free(self):
         print("Removing node ", self, ", Goodbye!")
-    
+
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
         #TODO: Finish calcsize
-        
-        if calcsize(self, context,axis='x') != calcsize(self, context,axis='y'):
-           layout.label("image x,y output is %s,%s pixels" %
-                       (calcsize(self, context,axis='x'),calcsize(self, context,axis='y')))
+
+        if calcsize(self, context, axis='x') != calcsize(self, context, axis='y'):
+            layout.label("image x,y output is %s,%s pixels" %
+                         (calcsize(self, context, axis='x'), calcsize(self, context, axis='y')))
         else:
-           layout.label("image output is %s pixels" %calcsize(self, context,axis='x'))
-        
+            layout.label("image output is %s pixels" % calcsize(self, context, axis='x'))
+
         layout.prop(self, "num_output")
         layout.prop(self, "bias_term")
-        
+
         layout.prop(self, "square_padding")
         if self.square_padding:
             layout.prop(self, "pad")
         else:
             layout.prop(self, "pad_h")
             layout.prop(self, "pad_w")
-        
+
         layout.prop(self, "square_kernel")
         if self.square_kernel:
             layout.prop(self, "kernel_size")
         else:
             layout.prop(self, "kernel_h")
             layout.prop(self, "kernel_w")
-        
+
         layout.prop(self, "square_stride")
         if self.square_stride:
             layout.prop(self, "stride")
         else:
             layout.prop(self, "stride_h")
             layout.prop(self, "stride_w")
-        
+
         layout.label("Weight Filler")
         self.weight_filler.draw(context, layout)
-        
+
         layout.label("bias Filler")
         self.bias_filler.draw(context, layout)
-        
+
         self.draw_extra_params(context, layout)
+
 
 class FCNode(Node, CaffeTreeNode):
     # === Basics ===
@@ -925,21 +942,21 @@ class FCNode(Node, CaffeTreeNode):
     bl_label = 'Fully connected Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = 'InnerProduct'
 
     # === Custom Properties ===
     num_output = bpy.props.IntProperty(name="Number of outputs", default=10, min=1)
-    bias_term = bpy.props.BoolProperty(name='Include Bias term',default=True)
+    bias_term = bpy.props.BoolProperty(name='Include Bias term', default=True)
     weight_filler = bpy.props.PointerProperty(type=filler_p_g)
     bias_filler = bpy.props.PointerProperty(type=filler_p_g)
     axis = bpy.props.IntProperty(name="Starting axis", default=1)
-    
+
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
         self.outputs.new('OutputSocketType', "Output Activations")
-        self.color = [1, 0 ,0]
+        self.color = [1, 0, 0]
         self.use_custom_color = True
 
     # Copy function to initialize a copied node from an existing one.
@@ -956,14 +973,15 @@ class FCNode(Node, CaffeTreeNode):
         layout.prop(self, "num_output")
         layout.prop(self, "bias_term")
         layout.prop(self, "axis")
-        
+
         layout.label("Weight Filler")
         self.weight_filler.draw(context, layout)
-        
+
         layout.label("bias Filler")
         self.bias_filler.draw(context, layout)
-        
+
         self.draw_extra_params(context, layout)
+
 
 class FlattenNode(Node, CaffeTreeNode):
     # === Basics ===
@@ -975,9 +993,9 @@ class FlattenNode(Node, CaffeTreeNode):
     bl_label = 'Flatten Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = 'Flatten'
-    
+
     # === Custom Properties ===
     # === Optional Functions ===
     def init(self, context):
@@ -997,7 +1015,8 @@ class FlattenNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         layout.label("Flatten")
         self.draw_extra_params(context, layout)
-        
+
+
 class SilenceNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
@@ -1008,9 +1027,9 @@ class SilenceNode(Node, CaffeTreeNode):
     bl_label = 'Silence Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = 'Silence'
-    
+
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input")
@@ -1027,6 +1046,7 @@ class SilenceNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         layout.label("Silence")
 
+
 class LRNNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
@@ -1037,9 +1057,9 @@ class LRNNode(Node, CaffeTreeNode):
     bl_label = 'LRN Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = 'LRN'
-    
+
     modes = [
         ("ACROSS_CHANNELS", "ACROSS_CHANNELS", "Go across Channels"),
         ("WITHIN_CHANNEL", "WITHIN_CHANNEL", "Go by location"),
@@ -1069,8 +1089,9 @@ class LRNNode(Node, CaffeTreeNode):
         layout.prop(self, "beta")
         layout.prop(self, "size")
         layout.prop(self, "mode")
-		
+
         self.draw_extra_params(context, layout)
+
 
 class ActivationNode(Node, CaffeTreeNode):
     # === Basics ===
@@ -1107,6 +1128,7 @@ class ActivationNode(Node, CaffeTreeNode):
         layout.prop(self, "mode")
         self.draw_extra_params(context, layout)
 
+
 class ReLuNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
@@ -1117,7 +1139,7 @@ class ReLuNode(Node, CaffeTreeNode):
     bl_label = 'ReLu Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = 'ReLU'
 
     engines = [("DEFAULT", "DEFAULT", "Default"),
@@ -1126,8 +1148,8 @@ class ReLuNode(Node, CaffeTreeNode):
 
     # === Custom Properties ===
     negative_slope = bpy.props.FloatProperty(default=0)
-    #engine = bpy.props.EnumProperty(items=engines, default='DEFAULT')
-    
+    # engine = bpy.props.EnumProperty(items=engines, default='DEFAULT')
+
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
@@ -1148,6 +1170,7 @@ class ReLuNode(Node, CaffeTreeNode):
         #layout.prop(self, "engine")
         self.draw_extra_params(context, layout)
 
+
 class PReLuNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
@@ -1158,13 +1181,13 @@ class PReLuNode(Node, CaffeTreeNode):
     bl_label = 'PReLu Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = 'PReLU'
 
     # === Custom Properties ===
     channel_shared = bpy.props.BoolProperty(default=False)
     filler = bpy.props.PointerProperty(type=filler_p_g)
-    
+
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
@@ -1182,8 +1205,9 @@ class PReLuNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         layout.prop(self, "channel_shared")
         self.filler.draw(context, layout)
-        self.draw_extra_params(context, layout)    
-                
+        self.draw_extra_params(context, layout)
+
+
 class SMLossNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
@@ -1194,11 +1218,11 @@ class SMLossNode(Node, CaffeTreeNode):
     bl_label = 'Softmax Loss Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = 'SoftmaxWithLoss'
-    
+
     w = bpy.props.FloatProperty(default=1)
-    
+
     def init(self, context):
         self.inputs.new('NAFlatSocketType', "Input Probabilities")
         self.inputs.new('LabelSocketType', "Input Label")
@@ -1230,9 +1254,9 @@ class SCELossNode(Node, CaffeTreeNode):
     bl_label = 'SCE Loss Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = 'SigmoidCrossEntropyLoss'
-    
+
     w = bpy.props.FloatProperty(default=0)
     # === Custom Properties ===
     # === Optional Functions ===
@@ -1256,6 +1280,7 @@ class SCELossNode(Node, CaffeTreeNode):
         layout.prop(self, "w")
         self.draw_extra_params(context, layout)
 
+
 class EULossNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
@@ -1266,9 +1291,9 @@ class EULossNode(Node, CaffeTreeNode):
     bl_label = 'EU Loss Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = 'EuclideanLoss'
-    
+
     w = bpy.props.FloatProperty(default=0)
     # === Custom Properties ===
     # === Optional Functions ===
@@ -1292,6 +1317,7 @@ class EULossNode(Node, CaffeTreeNode):
         layout.prop(self, "w")
         self.draw_extra_params(context, layout)
 
+
 class DropoutNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
@@ -1302,11 +1328,11 @@ class DropoutNode(Node, CaffeTreeNode):
     bl_label = 'Dropout Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = 'Dropout'
 
     # === Custom Properties ===
-    dropout_ratio = bpy.props.FloatProperty(default=0.5,min=0,max=1)
+    dropout_ratio = bpy.props.FloatProperty(default=0.5, min=0, max=1)
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('NAFlatSocketType', "Input image")
@@ -1327,6 +1353,7 @@ class DropoutNode(Node, CaffeTreeNode):
         layout.prop(self, "dropout_ratio")
         self.draw_extra_params(context, layout)
 
+
 class ConcatNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
@@ -1337,14 +1364,14 @@ class ConcatNode(Node, CaffeTreeNode):
     bl_label = 'Concatanation Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = 'Concat'
-    
+
     def update_bottoms(self, context):
         while len(self.inputs) < self.input_amount:
-            self.inputs.new('ImageSocketType', "Input%i" % (len(self.inputs)+1))
+            self.inputs.new('ImageSocketType', "Input%i" % (len(self.inputs) + 1))
         while len(self.inputs) > self.input_amount:
-            self.inputs.remove(self.inputs[len(self.inputs)-1])
+            self.inputs.remove(self.inputs[len(self.inputs) - 1])
 
     input_amount = bpy.props.IntProperty(min=1, default=2, update=update_bottoms)
 
@@ -1382,7 +1409,7 @@ class AccuracyNode(Node, CaffeTreeNode):
     bl_label = 'Accuracy Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = 'Accuracy'
 
     # === Custom Properties ===
@@ -1392,7 +1419,7 @@ class AccuracyNode(Node, CaffeTreeNode):
         self.inputs.new('NAFlatSocketType', "Input class")
         self.inputs.new('LabelSocketType', "Input label")
         self.outputs.new('OutputSocketType', "Output Accuracy")
-    
+
         self.include_in = "TEST"
 
 
@@ -1412,6 +1439,7 @@ class AccuracyNode(Node, CaffeTreeNode):
         self.draw_include_in(layout)
         self.draw_extra_params(context, layout)
 
+
 class ArgMaxNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
@@ -1422,32 +1450,33 @@ class ArgMaxNode(Node, CaffeTreeNode):
     bl_label = 'Arg Max Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = 'ArgMax'
-    
+
     # === Custom Properties ===
     OutMaxVal = bpy.props.BoolProperty(name='Output max value', default=False)
-    TopK = bpy.props.IntProperty(name='Top k',default=1, min=1, soft_max=200)
+    TopK = bpy.props.IntProperty(name='Top k', default=1, min=1, soft_max=200)
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('LossSocketType', "Input loss")
         self.outputs.new('OutputSocketType', "Output Arg Max")
-    
-    
+
+
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
         print("Copying from node ", node)
-    
+
     # Free function to clean up on removal.
     def free(self):
         print("Removing node ", self, ", Goodbye!")
-    
+
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
         layout.prop(self, "OutMaxVal")
         layout.prop(self, "TopK")
         self.draw_extra_params(context, layout)
-        
+
+
 class HDF5OutputNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
@@ -1458,30 +1487,30 @@ class HDF5OutputNode(Node, CaffeTreeNode):
     bl_label = 'HDF 5 Output Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = 'HDF5Output'
-    
+
     # === Custom Properties ===
     filename = bpy.props.StringProperty \
-        (
-         name="HDF5 output File",
-         default="",
-         description="The path to the data file",
-         subtype='FILE_PATH'
-         )
+            (
+            name="HDF5 output File",
+            default="",
+            description="The path to the data file",
+            subtype='FILE_PATH'
+        )
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input Image")
-    
-    
+
+
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
         print("Copying from node ", node)
-    
+
     # Free function to clean up on removal.
     def free(self):
         print("Removing node ", self, ", Goodbye!")
-    
+
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
         layout.prop(self, "filename")
@@ -1497,33 +1526,34 @@ class LogNode(Node, CaffeTreeNode):
     bl_label = 'Log Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = 'Log'
-    
+
     # === Custom Properties ===
     scale = bpy.props.FloatProperty(name='Scale', default=1, min=0, soft_max=200)
-    shift = bpy.props.FloatProperty(name='Shift',default=0, soft_min=-200, soft_max=200)
-    base = bpy.props.FloatProperty(name='base',default=-1, min=-1, soft_max=200)
+    shift = bpy.props.FloatProperty(name='Shift', default=0, soft_min=-200, soft_max=200)
+    base = bpy.props.FloatProperty(name='base', default=-1, min=-1, soft_max=200)
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input data")
         self.outputs.new('OutputSocketType', "Output data")
-    
-    
+
+
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
         print("Copying from node ", node)
-    
+
     # Free function to clean up on removal.
     def free(self):
         print("Removing node ", self, ", Goodbye!")
-    
+
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
         layout.prop(self, "scale")
         layout.prop(self, "shift")
         layout.prop(self, "base")
         self.draw_extra_params(context, layout)
+
 
 class PowerNode(Node, CaffeTreeNode):
     # === Basics ===
@@ -1535,9 +1565,9 @@ class PowerNode(Node, CaffeTreeNode):
     bl_label = 'Power Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = 'Power'
-    
+
     # === Custom Properties ===
     power = bpy.props.FloatProperty(name='Power', default=1)
     scale = bpy.props.FloatProperty(name='Scale', default=1)
@@ -1546,16 +1576,16 @@ class PowerNode(Node, CaffeTreeNode):
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input data")
         self.outputs.new('OutputSocketType', "Output data")
-    
-    
+
+
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
         print("Copying from node ", node)
-    
+
     # Free function to clean up on removal.
     def free(self):
         print("Removing node ", self, ", Goodbye!")
-    
+
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
         layout.prop(self, "power")
@@ -1574,39 +1604,40 @@ class ReductionNode(Node, CaffeTreeNode):
     bl_label = 'Reduction Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = 'Reduction'
-    
-    ops = [ ("SUM", "SUM", "Sum"),
+
+    ops = [("SUM", "SUM", "Sum"),
            ("ASUM", "ASUM", "Absolute Sum"),
            ("SUMSQ", "SUMSQ", "Sum of squares"),
            ("MEAN", "MEAN", "Mean")
-    ]
-        
+           ]
+
     # === Custom Properties ===
     operation = bpy.props.EnumProperty(name='Operation', default='SUM', items=ops)
     axis = bpy.props.IntProperty(name='Axis', default=0)
     coeff = bpy.props.FloatProperty(name='Coeff', default=1)
     # === Optional Functions ===
     def init(self, context):
-       self.inputs.new('ImageSocketType', "Input data")
-       self.outputs.new('OutputSocketType', "Output data")
+        self.inputs.new('ImageSocketType', "Input data")
+        self.outputs.new('OutputSocketType', "Output data")
 
 
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
         print("Copying from node ", node)
-    
+
     # Free function to clean up on removal.
     def free(self):
         print("Removing node ", self, ", Goodbye!")
-    
+
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
         layout.prop(self, "operation")
         layout.prop(self, "axis")
         layout.prop(self, "coeff")
         self.draw_extra_params(context, layout)
+
 
 class slice_point_p_g(bpy.types.PropertyGroup):
     slice_point = bpy.props.IntProperty(min=0)
@@ -1625,21 +1656,21 @@ class SliceNode(Node, CaffeTreeNode):
     bl_label = 'Slice Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     n_type = 'Slice'
-        
+
     # === Custom Properties ===
     axis = bpy.props.IntProperty(name='Axis', default=0)
     slice_points = bpy.props.CollectionProperty(type=slice_point_p_g)
-    
+
     def update_slices(self, context):
         while len(self.slice_points) < self.num_of_slices:
             self.slice_points.add()
             self.outputs.new('OutputSocketType', "Out%i" % len(self.slice_points))
         while len(self.slice_points) > self.num_of_slices:
-            self.slice_points.remove(len(self.slice_points)-1)
-            self.outputs.remove(self.outputs[len(self.slice_points)+1])
-    
+            self.slice_points.remove(len(self.slice_points) - 1)
+            self.outputs.remove(self.outputs[len(self.slice_points) + 1])
+
     num_of_slices = bpy.props.IntProperty(default=1, min=1, update=update_slices)
 
     # === Optional Functions ===
@@ -1661,14 +1692,14 @@ class SliceNode(Node, CaffeTreeNode):
     def draw_buttons(self, context, layout):
         layout.prop(self, "axis")
         layout.prop(self, "num_of_slices")
-        
+
         for slice_point in self.slice_points:
             slice_point.draw(context, layout)
-			
+
         self.draw_extra_params(context, layout)
 
 
-#// Return the current learning rate. The currently implemented learning rate
+# // Return the current learning rate. The currently implemented learning rate
 #// policies are as follows:
 #//    - fixed: always return base_lr.
 #//    - step: return base_lr * gamma ^ (floor(iter / step))
@@ -1694,7 +1725,7 @@ class SolverNode(Node, CaffeTreeNode):
     bl_label = 'Solver Node'
     # Icon identifier
     bl_icon = 'SOUND'
-    
+
     lr_policies = [("fixed", "fixed", "Fixed"),
                    ("step", "step", "Step"),
                    ("exp", "exp", "Exponential"),
@@ -1702,10 +1733,9 @@ class SolverNode(Node, CaffeTreeNode):
                    ("multistep", "multistep", "Multi Step"),
                    ("poly", "poly", "Polinomial"),
                    ("sigmoid", "sigmoid", "Sigmoid")]
-                   
+
     regularization_types = [("L1", "L1", "L1"), ("L2", "L2", "L2")]
-    
-    
+
     gputoggles = []
     gpunum = getgpus()
     gpufailed = 0
@@ -1714,7 +1744,7 @@ class SolverNode(Node, CaffeTreeNode):
         gpufailed = 1
     else:
         for gpu in range(gpunum):
-            gpu_name = 'GPU %i'%gpu
+            gpu_name = 'GPU %i' % gpu
             gputoggles.append((gpu_name, gpu_name, gpu_name))
 
 
@@ -1722,16 +1752,22 @@ class SolverNode(Node, CaffeTreeNode):
     # === Custom Properties ===
     solvername = bpy.props.StringProperty()
 
-    test_iter = bpy.props.IntProperty(name='Test Iterations',default=100, min=1, description="How many forward passes the test should carry out")
-    test_interval = bpy.props.IntProperty(name='Test Interval', default=500, min=1, description="Carry out testing every test interval iterations")
-    test_compute_loss = bpy.props.BoolProperty(name='Test Compute Loss',default=False, description="Compute loss in testing")
-    test_initialization = bpy.props.BoolProperty(name='Test Initialization',default=True,
-                          description="run an initial test pass before the first iteration, ensuring memory availability and printing the starting value of the loss.")
-    base_lr = bpy.props.FloatProperty(name='Base Learning rate',default=0.01, min=0)
-    display = bpy.props.IntProperty(name='Display',default=100, min=0, description="The number of iterations between displaying info. If display = 0, no info will be displayed")
-    average_loss = bpy.props.IntProperty(name='Average Loss',default=1, min=1, description="Display the loss averaged over the last average_loss iterations")
+    test_iter = bpy.props.IntProperty(name='Test Iterations', default=100, min=1,
+                                      description="How many forward passes the test should carry out")
+    test_interval = bpy.props.IntProperty(name='Test Interval', default=500, min=1,
+                                          description="Carry out testing every test interval iterations")
+    test_compute_loss = bpy.props.BoolProperty(name='Test Compute Loss', default=False,
+                                               description="Compute loss in testing")
+    test_initialization = bpy.props.BoolProperty(name='Test Initialization', default=True,
+                                                 description="run an initial test pass before the first iteration, ensuring memory availability and printing the starting value of the loss.")
+    base_lr = bpy.props.FloatProperty(name='Base Learning rate', default=0.01, min=0)
+    display = bpy.props.IntProperty(name='Display', default=100, min=0,
+                                    description="The number of iterations between displaying info. If display = 0, no info will be displayed")
+    average_loss = bpy.props.IntProperty(name='Average Loss', default=1, min=1,
+                                         description="Display the loss averaged over the last average_loss iterations")
     max_iter = bpy.props.IntProperty(name='Maximum Iterations', default=50000, min=1)
-    iter_size = bpy.props.IntProperty(name='Iteration Size', default=1, min=1, description="Accumulate gradients over iter_size x batch_size instances")
+    iter_size = bpy.props.IntProperty(name='Iteration Size', default=1, min=1,
+                                      description="Accumulate gradients over iter_size x batch_size instances")
 
     lr_policy = bpy.props.EnumProperty(name='Learning rate Policy', items=lr_policies, default='step')
     gamma = bpy.props.FloatProperty(name='Gamma', default=0.0001, min=0)
@@ -1748,26 +1784,29 @@ class SolverNode(Node, CaffeTreeNode):
 
     #TODO: Maybe add clip gradients
 
-    snapshot = bpy.props.IntProperty(name='Snapshot Interval', default=0, min=0, description="The snapshot interval. 0 for no snapshot")
+    snapshot = bpy.props.IntProperty(name='Snapshot Interval', default=0, min=0,
+                                     description="The snapshot interval. 0 for no snapshot")
     snapshot_prefix = bpy.props.StringProperty \
-        (
-         name="Snapshot Path",
-         default="",
-         description="Give the path to the snapshot data",
-         subtype='DIR_PATH'
-         )
+            (
+            name="Snapshot Path",
+            default="",
+            description="Give the path to the snapshot data",
+            subtype='DIR_PATH'
+        )
 
-    snapshot_diff = bpy.props.BoolProperty(name='Snapshot diff',default=False, description="Whether to snapshot diff in the results or not")
+    snapshot_diff = bpy.props.BoolProperty(name='Snapshot diff', default=False,
+                                           description="Whether to snapshot diff in the results or not")
 
-#    snapshot_formats = [("HDF5", "HDF5", "HDF5"), ("BINARYPROTO", "BINARYPROTO", "BINARYPROTO")]
-#    snapshot_format = bpy.props.EnumProperty(name='Snapshot format', items=snapshot_formats, default='BINARYPROTO')
+    #    snapshot_formats = [("HDF5", "HDF5", "HDF5"), ("BINARYPROTO", "BINARYPROTO", "BINARYPROTO")]
+    #    snapshot_format = bpy.props.EnumProperty(name='Snapshot format', items=snapshot_formats, default='BINARYPROTO')
 
     solver_modes = [("GPU", "GPU", "GPU"), ("CPU", "CPU", "CPU")]
-    solver_mode =  bpy.props.EnumProperty(name='Solver mode', items=solver_modes, default='GPU')
-    gpus = bpy.props.EnumProperty(name="GPU",description="GPU to use", items=gputoggles)
+    solver_mode = bpy.props.EnumProperty(name='Solver mode', items=solver_modes, default='GPU')
+    gpus = bpy.props.EnumProperty(name="GPU", description="GPU to use", items=gputoggles)
 
-    use_random_seed = bpy.props.BoolProperty(name='Use Random seed',default=False)
-    random_seed = bpy.props.IntProperty(name='Random seed', default=10, description="The seed with which the Solver will initialize the Caffe random number generator")
+    use_random_seed = bpy.props.BoolProperty(name='Use Random seed', default=False)
+    random_seed = bpy.props.IntProperty(name='Random seed', default=10,
+                                        description="The seed with which the Solver will initialize the Caffe random number generator")
 
     solver_types = [("NESTEROV", "NESTEROV", "Nesterovs Accelerated Gradient"),
                     ("ADAGRAD", "ADAGRAD", "Adaptive gradient descent"),
@@ -1778,48 +1817,49 @@ class SolverNode(Node, CaffeTreeNode):
 
     debug_info = bpy.props.BoolProperty(name='Debug info', default=False)
 
-    snapshot_after_train = bpy.props.BoolProperty(name='Snapshot after train', default=True, description="If false, don't save a snapshot after training finishes")
+    snapshot_after_train = bpy.props.BoolProperty(name='Snapshot after train', default=True,
+                                                  description="If false, don't save a snapshot after training finishes")
 
 
 
-#    solver = bpy.props.EnumProperty(name="Mode", default='SGD', items=modes)
-#    compmode = bpy.props.EnumProperty(name="Compute Mode", default='GPU', items=computemodes)
-#
-#    accum = bpy.props.BoolProperty(name='Accumulate Gradients',default=True)
-#    accumiters = bpy.props.IntProperty(name='Number of minibatches to Accumulate',default=1 ,min=1,soft_max=10)
-#    testinterval = bpy.props.IntProperty(name='Test Interval',default=500, min=1, soft_max=2000)
-#    testruns = bpy.props.IntProperty(name='Test Batches',default=50, min=1, soft_max=200)
-#    displayiter = bpy.props.IntProperty(name='Display iter.',default=100, min=1, soft_max=5000)
-#    maxiter = bpy.props.IntProperty(name='Final iteration',default=50000, min=5, soft_max=100000)
-#    learningrate = bpy.props.FloatProperty(name = 'Learning rate',default=0.01, min=0.001, soft_max=1)
-#    snapshotiter = bpy.props.IntProperty(name = 'Snapshot iteration',default=10000, min=10, soft_max=50000)
-#    snapshotpath = bpy.props.StringProperty \
-#        (
-#            name="Snapshot Data Path",
-#            default="",
-#            description="Give the path to the snapshot data",
-#            subtype='DIR_PATH'
-#        )
+    #    solver = bpy.props.EnumProperty(name="Mode", default='SGD', items=modes)
+    #    compmode = bpy.props.EnumProperty(name="Compute Mode", default='GPU', items=computemodes)
+    #
+    #    accum = bpy.props.BoolProperty(name='Accumulate Gradients',default=True)
+    #    accumiters = bpy.props.IntProperty(name='Number of minibatches to Accumulate',default=1 ,min=1,soft_max=10)
+    #    testinterval = bpy.props.IntProperty(name='Test Interval',default=500, min=1, soft_max=2000)
+    #    testruns = bpy.props.IntProperty(name='Test Batches',default=50, min=1, soft_max=200)
+    #    displayiter = bpy.props.IntProperty(name='Display iter.',default=100, min=1, soft_max=5000)
+    #    maxiter = bpy.props.IntProperty(name='Final iteration',default=50000, min=5, soft_max=100000)
+    #    learningrate = bpy.props.FloatProperty(name = 'Learning rate',default=0.01, min=0.001, soft_max=1)
+    #    snapshotiter = bpy.props.IntProperty(name = 'Snapshot iteration',default=10000, min=10, soft_max=50000)
+    #    snapshotpath = bpy.props.StringProperty \
+    #        (
+    #            name="Snapshot Data Path",
+    #            default="",
+    #            description="Give the path to the snapshot data",
+    #            subtype='DIR_PATH'
+    #        )
 
 
 
     config_path = bpy.props.StringProperty \
-        (
+            (
             name="Configuration Data Path",
             default="",
             description="Give the path to the config data",
             subtype='DIR_PATH'
         )
     caffe_exec = bpy.props.StringProperty \
-        (
-        name="Caffe Tools Folder",
-        default="",
-        description="Give the path to the caffe executable",
-        subtype='DIR_PATH'
+            (
+            name="Caffe Tools Folder",
+            default="",
+            description="Give the path to the caffe executable",
+            subtype='DIR_PATH'
         )
 
-#    def init(self, context):
-#        self.inputs.new('LossSocketType', "Input Loss")
+    #    def init(self, context):
+    #        self.inputs.new('LossSocketType', "Input Loss")
 
 
     # Copy function to initialize a copied node from an existing one.
@@ -1830,19 +1870,19 @@ class SolverNode(Node, CaffeTreeNode):
     def free(self):
         print("Removing node ", self, ", Goodbye!")
 
-#    def update(self):
-#        x = 0
-#        for input in self.inputs:
-#            if input.is_linked == False:
-#                x += 1
-#                if x > 1:
-#                    self.inputs.remove(input)
-#        if x == 0:
-#            self.inputs.new('LossSocketType', "Input Loss")
+    #    def update(self):
+    #        x = 0
+    #        for input in self.inputs:
+    #            if input.is_linked == False:
+    #                x += 1
+    #                if x > 1:
+    #                    self.inputs.remove(input)
+    #        if x == 0:
+    #            self.inputs.new('LossSocketType', "Input Loss")
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
-        
+
         layout.prop(self, "solvername")
         layout.prop(self, "test_iter")
         layout.prop(self, "test_interval")
@@ -1853,9 +1893,9 @@ class SolverNode(Node, CaffeTreeNode):
         layout.prop(self, "average_loss")
         layout.prop(self, "max_iter")
         layout.prop(self, "iter_size")
-        
+
         layout.prop(self, "lr_policy")
-        
+
         if self.lr_policy == 'step':
             layout.prop(self, "gamma")
             layout.prop(self, "stepsize")
@@ -1879,14 +1919,14 @@ class SolverNode(Node, CaffeTreeNode):
         layout.prop(self, "snapshot")
         layout.prop(self, "snapshot_prefix")
         layout.prop(self, "snapshot_diff")
-#        layout.prop(self, "snapshot_format")
+        #        layout.prop(self, "snapshot_format")
         layout.prop(self, "snapshot_after_train")
-        
+
         layout.prop(self, "solver_mode")
         if self.solver_mode == 'GPU':
             if self.gpufailed:
-                layout.label("WARNING: GPU NOT DETECTED",icon='ERROR')
-                layout.label("Check 'nvidia-smi' command can be run",icon='ERROR')
+                layout.label("WARNING: GPU NOT DETECTED", icon='ERROR')
+                layout.label("Check 'nvidia-smi' command can be run", icon='ERROR')
             else:
                 layout.prop(self, "gpus")
 
@@ -1898,7 +1938,7 @@ class SolverNode(Node, CaffeTreeNode):
 
         if self.solver_type == 'ADAGRAD':
             layout.prop(self, "delta")
-                
+
         layout.prop(self, "debug_info")
 
         layout.prop(self, "config_path")
@@ -1980,9 +2020,9 @@ node_categories = [
         NodeItem("AccuracyNodeType"),
         NodeItem("EULossNodeType"),
         NodeItem("SCELossNodeType"),
-        NodeItem("SMLossNodeType"),        
+        NodeItem("SMLossNodeType"),
         NodeItem("ReductionNodeType")
-        
+
     ]),
     CaffeNodeCategory("DNODES", "Data Nodes", items=[
         # our basic node
@@ -1994,6 +2034,7 @@ node_categories = [
         NodeItem("SilenceNodeType")
     ]),
 ]
+
 
 def register():
     bpy.utils.register_class(filler_p_g)
@@ -2038,6 +2079,7 @@ def register():
 
     nodeitems_utils.register_node_categories("CUSTOM_NODES", node_categories)
 
+
 def unregister():
     nodeitems_utils.unregister_node_categories("CUSTOM_NODES")
 
@@ -2080,6 +2122,7 @@ def unregister():
     bpy.utils.unregister_class(PowerNode)
     bpy.utils.unregister_class(ReductionNode)
     bpy.utils.unregister_class(SliceNode)
+
 
 if __name__ == "__main__":
     register()

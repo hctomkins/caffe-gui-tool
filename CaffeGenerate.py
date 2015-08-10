@@ -1,4 +1,4 @@
-#TODO: Add properties to solver
+# TODO: Add properties to solver
 #TODO: snapshot_format not available in this version. update later.
 
 __author__ = 'hugh'
@@ -16,9 +16,10 @@ tab = '    '
 tab2 = tab + tab
 tab3 = tab2 + tab
 
+
 def getFillerString(filler, name):
     fillerString = tab3 + 'type: "%s"\n' % filler.type
-    
+
     if filler.type == 'constant':
         fillerString += tab3 + 'value: %f\n' % (filler.value)
     elif filler.type == 'xavier' or filler.type == 'msra':
@@ -39,8 +40,8 @@ def getFillerString(filler, name):
 ''' % (name, fillerString)
     return string
 
+
 def conv_template(node):
-    
     if node.square_padding:
         padding_string = tab2 + 'pad: %i\n' % node.pad
     else:
@@ -62,7 +63,6 @@ def conv_template(node):
     weight_filler_string = getFillerString(node.weight_filler, 'weight_filler')
     bias_filler_string = getFillerString(node.bias_filler, 'bias_filler')
 
-
     string = '''\
     convolution_param {
         num_output: %i
@@ -73,9 +73,11 @@ def conv_template(node):
 %s
 %s
     }
-''' % (node.num_output, node.bias_term, padding_string, kernel_string, stride_string, weight_filler_string, bias_filler_string)
+''' % (node.num_output, node.bias_term, padding_string, kernel_string, stride_string, weight_filler_string,
+       bias_filler_string)
     #loadable
     return string
+
 
 def data_param_template(node, source, batch_size):
     string = '''\
@@ -87,6 +89,7 @@ def data_param_template(node, source, batch_size):
     }
 ''' % (source, node.db_type, batch_size, node.rand_skip)
     return string
+
 
 def image_data_param_template(node, source, batch_size):
     string = '''\
@@ -108,7 +111,7 @@ def transform_param_template(node):
     mean_file_string = ''
     if node.use_mean_file:
         mean_file_string = tab2 + 'mean_file: "%s"\n' % node.mean_file
-    
+
     string = '''\
     transform_param {
         scale: %f
@@ -117,7 +120,8 @@ def transform_param_template(node):
     }
 ''' % (node.scale, node.mirror, mean_file_string)
 
-    return  string
+    return string
+
 
 def hdf5_data_template(node, source, batch_size):
     string = '''\
@@ -129,6 +133,7 @@ def hdf5_data_template(node, source, batch_size):
 ''' % (source, batch_size, node.shuffle)
 
     return string
+
 
 def pool_template(node):
     string = '''\
@@ -153,11 +158,12 @@ def mvntemplate(node):
     #Loadable
     return string
 
+
 def eltwisetemplate(node):
     if node.operation == 'PROD':
-        coeffstring = 'coeff: %f'%node.coeff
+        coeffstring = 'coeff: %f' % node.coeff
     elif node.operation == 'SUM':
-        coeffstring = 'stable_prod_grad: %i'%node.stable_prod_grad
+        coeffstring = 'stable_prod_grad: %i' % node.stable_prod_grad
     else:
         coeffstring = ''
     string = '''\
@@ -167,6 +173,7 @@ def eltwisetemplate(node):
         }
 ''' % (node.operation, coeffstring)
     return string
+
 
 def FC_template(node):
     weight_filler_string = getFillerString(node.weight_filler, 'weight_filler')
@@ -183,6 +190,7 @@ def FC_template(node):
 ''' % (node.num_output, node.bias_term, weight_filler_string, bias_filler_string, node.axis)
 
     return string
+
 
 def PReLU_template(node):
     filler_string = getFillerString(node.filler, 'filler')
@@ -203,6 +211,7 @@ def Concattemplate(node):
     ''' % (node.axis)
     return string
 
+
 def argmaxtemplate(node):
     string = '''\
     argmax_param {
@@ -212,6 +221,7 @@ def argmaxtemplate(node):
 ''' % (node.OutMaxVal, node.TopK)
     return string
 
+
 def hdf5outputtemplate(node):
     string = '''\
     hdf5_output_param {
@@ -220,6 +230,7 @@ def hdf5outputtemplate(node):
 }
 ''' % (node.filename)
     return string
+
 
 def logtemplate(node):
     string = '''\
@@ -231,6 +242,7 @@ def logtemplate(node):
 ''' % (node.scale, node.shift, node.base)
     return string
 
+
 def powertemplate(node):
     string = '''\
     power_param {
@@ -240,6 +252,18 @@ def powertemplate(node):
     }
 ''' % (node.power, node.scale, node.shift)
     return string
+
+
+def exptemplate(node):
+    string = '''\
+    exp_param {
+        base: %f
+        scale: %f
+        shift: %f
+    }
+''' % (node.base, node.scale, node.shift)
+    return string
+
 
 def reductiontemplate(node):
     string = '''\
@@ -251,9 +275,10 @@ def reductiontemplate(node):
 ''' % (node.operation, node.axis, node.coeff)
     return string
 
+
 def slicetemplate(node):
     slice_points_string = '\n'.join(map(lambda x: tab2 + 'slice_point: %i' % x.slice_point, node.slice_points))
-    
+
     string = '''\
     slice_param {
         axis: %i
@@ -265,7 +290,7 @@ def slicetemplate(node):
 
 def solver_template(node):
     net_path = node.config_path + '%s_train_test.prototxt' % node.solvername
-    
+
     lr_string = ''
     if node.lr_policy == 'step':
         lr_string += 'gamma: %i\n' % node.gamma
@@ -290,8 +315,6 @@ def solver_template(node):
     delta_string = ''
     if node.solver_type == 'ADAGRAD':
         delta_string = 'delta %f' % node.delta
-
-
 
     string = ''' \
 net: "%s"
@@ -318,8 +341,10 @@ solver_type: %s
 %s
 debug_info: %i
 snapshot_after_train: %i
-''' % (net_path, node.test_iter, node.test_interval, node.test_compute_loss, node.test_initialization, node.base_lr, node.display, node.average_loss, node.max_iter,
-       node.iter_size, node.lr_policy, lr_string, node.momentum, node.weight_decay, node.regularization_type, node.snapshot, node.snapshot_prefix, node.snapshot_diff,
+''' % (net_path, node.test_iter, node.test_interval, node.test_compute_loss, node.test_initialization, node.base_lr,
+       node.display, node.average_loss, node.max_iter,
+       node.iter_size, node.lr_policy, lr_string, node.momentum, node.weight_decay, node.regularization_type,
+       node.snapshot, node.snapshot_prefix, node.snapshot_diff,
        node.solver_mode, random_seed_string, node.solver_type, delta_string, node.debug_info, node.snapshot_after_train)
     return "\n".join(filter(lambda x: x.strip(), string.splitlines())) + "\n"
 
@@ -339,15 +364,16 @@ input_dim: %i
 def scripttemplate(caffepath, configpath, solvername, gpus, solver):
     gpustring = ''
     usedcount = 0
-    
+
     extrastring = ''
     if solver == 'GPU' and gpus:
         extrastring = '--gpu=%s' % gpus[-1]
-    
+
     solverstring = configpath + '%s_solver.prototxt' % solvername
     caffestring = caffepath + 'caffe'
     string = "#!/usr/bin/env sh \n '%s' train --solver='%s' %s" % (caffestring, solverstring, extrastring)
     return string
+
 
 def loss_weight_template(loss_weight):
     return tab + 'loss_weight: %f' % loss_weight
@@ -355,15 +381,16 @@ def loss_weight_template(loss_weight):
 
 def param_template(param):
     string = tab + 'param {\n'
-    
+
     if param.name.strip():
         string += tab2 + 'name: "%s"\n' % param.name
 
     string += tab2 + 'lr_mult: %f\n' % param.lr_mult
     string += tab2 + 'decay_mult: %f\n' % param.decay_mult
-#    string += tab2 + 'share_mode: %s\n' % param.share_mode
+    #    string += tab2 + 'share_mode: %s\n' % param.share_mode
     string += tab + '}'
     return string
+
 
 def get_params(node):
     params = []
@@ -372,16 +399,17 @@ def get_params(node):
         params.append(param_template(node.bias_params))
     return params
 
+
 def get_include_in(node):
     if node.include_in == "BOTH":
         return ''
-    
+
     string = '''\
     include {
         phase: %s
     }
 ''' % node.include_in
-    
+
     return string
 
 
@@ -403,7 +431,7 @@ layer {
 %s
 }
 ''' % (node.name, node.n_type, tops_string, bottoms_string, params_string, special_params_string, include_in_string)
-    
+
     return "\n".join(filter(lambda x: x.strip(), string.splitlines())) + "\n"
 
 
@@ -427,6 +455,7 @@ def Relutemplate(node):
     ''' % (node.negative_slope)
     return string
 
+
 def dropouttemplate(node):
     string = '''\
     dropout_param {
@@ -435,20 +464,22 @@ def dropouttemplate(node):
     ''' % (node.dropout_ratio)
     return string
 
+
 class Vertex():
     pass
+
 
 def reorder(graph):
     res_string = []
     res_dstring = []
     while len(graph) > 0:
-        curr = min(graph, key = lambda x: len(x.bottoms))
+        curr = min(graph, key=lambda x: len(x.bottoms))
         if len(curr.bottoms) != 0:
             print('Cycle in graph?!')
-        
+
         res_string.append(curr.string)
         res_dstring.append(curr.dstring)
-        
+
         for item in graph:
             for top in curr.tops:
                 try:
@@ -458,8 +489,10 @@ def reorder(graph):
         graph.remove(curr)
     return res_string, res_dstring
 
-def nodebefore(innode,socket=0):
+
+def nodebefore(innode, socket=0):
     return innode.inputs[socket].links[0].from_socket.node
+
 
 def isinplace(node):
     if node.bl_idname == 'ReluNodeType' or node.bl_idname == 'DropoutNodeType':
@@ -467,47 +500,53 @@ def isinplace(node):
     else:
         return 0
 
-def findsocket(socketname,node):        #Given a node, find the position of a certain output socket
+
+def findsocket(socketname, node):  #Given a node, find the position of a certain output socket
     print (node.name)
-    for number,socket in enumerate(node.outputs):
+    for number, socket in enumerate(node.outputs):
         if socket.name == socketname:
             print(number)
             return number
     raise TypeError
 
-def autotop(node,socket,orderpass=0):       #Assigns an arbitrary top name to a node
+
+def autotop(node, socket, orderpass=0):  #Assigns an arbitrary top name to a node
     print('autotop')
     if isinplace(node) and not orderpass:
-        top = autobottom(node,0,orderpass=0)
+        top = autobottom(node, 0, orderpass=0)
     else:
         top = node.name + str(socket)
     return top
 
-def autobottom(node,socketnum,orderpass=0):     #Finds the bottom of a node socket
+
+def autobottom(node, socketnum, orderpass=0):  #Finds the bottom of a node socket
     print ('autobottom')
 
-    if isinplace(nodebefore(node,socketnum)) and not orderpass:
-        socketbelow = nodebefore(node,socketnum).inputs[0].links[0].from_socket.name
-        socketbelowposition = findsocket(socketbelow,nodebefore(nodebefore(node,socketnum)))
-        bottom = nodebefore(nodebefore(node,socketnum),0).name + str(socketbelowposition)
+    if isinplace(nodebefore(node, socketnum)) and not orderpass:
+        socketbelow = nodebefore(node, socketnum).inputs[0].links[0].from_socket.name
+        socketbelowposition = findsocket(socketbelow, nodebefore(nodebefore(node, socketnum)))
+        bottom = nodebefore(nodebefore(node, socketnum), 0).name + str(socketbelowposition)
     else:
         socketbelow = node.inputs[socketnum].links[0].from_socket.name
-        socketbelowposition = findsocket(socketbelow,nodebefore(node,socketnum))
-        bottom = nodebefore(node,socketnum).name + str(socketbelowposition)
+        socketbelowposition = findsocket(socketbelow, nodebefore(node, socketnum))
+        bottom = nodebefore(node, socketnum).name + str(socketbelowposition)
     return bottom
 
-def getbottomsandtops(node,orderpass=0):
+
+def getbottomsandtops(node, orderpass=0):
     bottoms = []
-    for socknum,input in enumerate(node.inputs):
+    for socknum, input in enumerate(node.inputs):
         if input.is_linked:
             bottom = input.links[0].from_socket.output_name
             print(input.links[0].from_socket.name)
             if bottom != '':
                 bottoms.extend([bottom])
             else:
-                bottoms.extend([autobottom(node,socknum,orderpass)])
-    tops = [x.output_name if x.output_name != '' else autotop(node,socket,orderpass) for socket,x in enumerate(node.outputs)]
-    return bottoms,tops
+                bottoms.extend([autobottom(node, socknum, orderpass)])
+    tops = [x.output_name if x.output_name != '' else autotop(node, socket, orderpass) for socket, x in
+            enumerate(node.outputs)]
+    return bottoms, tops
+
 
 class Solve(bpy.types.Operator):
     """Generate Caffe solver"""  # blender will use this as a tooltip for menu items and buttons.
@@ -522,7 +561,7 @@ class Solve(bpy.types.Operator):
             nname = node.name
             string = ''
             try:
-                bottoms,tops = getbottomsandtops(node)
+                bottoms, tops = getbottomsandtops(node)
             except AttributeError:
                 print (node.name)
             print(tops)
@@ -548,20 +587,22 @@ class Solve(bpy.types.Operator):
                 elif node.db_type == 'HDF5Data':
                     train_params = [hdf5_data_template(node, node.train_data, node.train_batch_size)]
                     test_params = [hdf5_data_template(node, node.test_data, node.test_batch_size)]
-                
+
                 node.include_in = "TRAIN"
                 train_string = layer_template(node, tops, bottoms, train_params)
                 node.include_in = "TEST"
                 test_string = layer_template(node, tops, bottoms, test_params)
-                
+
                 string = train_string + test_string
-                
+
                 #TODO: Finish dstring
                 dstring = ''
             elif node.bl_idname == 'PoolNodeType':
                 special_params.append(pool_template(node))
             elif node.bl_idname == 'EltwiseNodeType':
                 special_params.append(eltwisetemplate(node))
+            elif node.bl_idname == 'ExpNodeType':
+                special_params.append(exptemplate(node))
             elif node.bl_idname == 'ConvNodeType':
                 special_params.append(conv_template(node))
             elif node.bl_idname == 'DeConvNodeType':
@@ -619,7 +660,7 @@ class Solve(bpy.types.Operator):
             elif node.bl_idname == 'SolverNodeType':
                 solverstring = solver_template(node)
                 scriptstring = scripttemplate(node.caffe_exec, node.config_path, node.solvername, node.gpus,
-                                            solver=node.solver_mode)
+                                              solver=node.solver_mode)
                 configpath = node.config_path
                 solvername = node.solvername
             elif node.bl_idname == 'MVNNodeType':
@@ -631,7 +672,7 @@ class Solve(bpy.types.Operator):
                     string = layer_template(node, tops, bottoms, special_params)
                     dstring = string
                 ################################# Recalculate bottoms and tops for ordering
-                bottoms,tops = getbottomsandtops(node,orderpass=1)
+                bottoms, tops = getbottomsandtops(node, orderpass=1)
                 #####################################
                 v = Vertex()
                 v.string = string
@@ -639,11 +680,11 @@ class Solve(bpy.types.Operator):
                 v.bottoms = bottoms
                 v.tops = tops
                 graph.append(v)
-                
+
         strings, dstrings = reorder(graph)
         solution = ''.join(strings)
         dsolution = ''.join(dstrings)
-    
+
         os.chdir(configpath)
         ttfile = open('%s_train_test.prototxt' % solvername, mode='w')
         ttfile.write(solution)
@@ -660,8 +701,10 @@ class Solve(bpy.types.Operator):
         print ('Finished solving tree')
         return {'FINISHED'}  # this lets blender know the operator finished successfully.
 
+
 def register():
     bpy.utils.register_class(Solve)
+
 
 def unregister():
     bpy.utils.unregister_class(Solve)
