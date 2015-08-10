@@ -59,8 +59,8 @@ def conv_template(node):
         stride_string = tab2 + 'stride_h: %i\n' % node.stride_h
         stride_string += tab2 + 'stride_w: %i\n' % node.stride_w
 
-        weight_filler_string = getFillerString(node.weight_filler, 'weight_filler')
-        bias_filler_string = getFillerString(node.bias_filler, 'bias_filler')
+    weight_filler_string = getFillerString(node.weight_filler, 'weight_filler')
+    bias_filler_string = getFillerString(node.bias_filler, 'bias_filler')
 
 
     string = '''\
@@ -521,7 +521,10 @@ class Solve(bpy.types.Operator):
         for node in context.selected_nodes:
             nname = node.name
             string = ''
-            bottoms,tops = getbottomsandtops(node)
+            try:
+                bottoms,tops = getbottomsandtops(node)
+            except AttributeError:
+                print (node.name)
             print(tops)
             print (bottoms)
             special_params = []
