@@ -2,7 +2,7 @@
 ==============
 This a node based tool for creating caffe networks. It works inside the graphics application 'blender' as a plugin. The reason for this is blender's highly stable, and universally compatible node editor.
 ##Important
-CGT features change regularly. If you update and your nodetree no longer compiles, all the nodes in your tree must be Re-added. A prototxt load feature will be added in the next update to make this process redundant.
+**CGT features change regularly. If you update and your nodetree no longer compiles, all the nodes in your tree must be Re-added. A prototxt load feature will be added in the next update to make this process redundant.**
 
 ###Potentially useful features:
 * Autonaming of top,bottom, and layer names
