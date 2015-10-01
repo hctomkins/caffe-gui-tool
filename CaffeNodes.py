@@ -827,11 +827,11 @@ class ConvNode(Node, CaffeTreeNode):
         else:
             layout.prop(self, "stride_h")
             layout.prop(self, "stride_w")
-            layout.label("Weight Filler")
-            self.weight_filler.draw(context, layout)
-            if self.bias_term:
-                layout.label("bias Filler")
-                self.bias_filler.draw(context, layout)
+        layout.label("Weight Filler")
+        self.weight_filler.draw(context, layout)
+        if self.bias_term:
+            layout.label("bias Filler")
+            self.bias_filler.draw(context, layout)
 
         self.draw_extra_params(context, layout)
 
