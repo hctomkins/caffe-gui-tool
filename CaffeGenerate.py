@@ -495,7 +495,7 @@ def nodebefore(innode, socket=0):
 
 
 def isinplace(node):
-    if node.bl_idname == 'ReluNodeType' or node.bl_idname == 'DropoutNodeType':
+    if node.bl_idname == 'ReluNodeType': #or node.bl_idname == 'DropoutNodeType':
         return 1
     else:
         return 0
@@ -560,10 +560,7 @@ class Solve(bpy.types.Operator):
         for node in context.selected_nodes:
             nname = node.name
             string = ''
-            try:
-                bottoms, tops = getbottomsandtops(node)
-            except AttributeError:
-                print (node.name)
+            bottoms, tops = getbottomsandtops(node)
             print(tops)
             print (bottoms)
             special_params = []
