@@ -949,6 +949,7 @@ class FCNode(Node, CaffeTreeNode):
     bias_term = bpy.props.BoolProperty(name='Include Bias term', default=True)
     weight_filler = bpy.props.PointerProperty(type=filler_p_g)
     bias_filler = bpy.props.PointerProperty(type=filler_p_g)
+    specax =  bpy.props.BoolProperty(name="Specify Axis",default=0)
     axis = bpy.props.IntProperty(name="Starting axis", default=1)
 
     # === Optional Functions ===
@@ -971,7 +972,9 @@ class FCNode(Node, CaffeTreeNode):
         layout.label("Network is now %s neurons" % calcsize(self, context))
         layout.prop(self, "num_output")
         layout.prop(self, "bias_term")
-        layout.prop(self, "axis")
+        layout.prop(self, "specax")
+        if self.specax:
+            layout.prop(self, "axis")
 
         layout.label("Weight Filler")
         self.weight_filler.draw(context, layout)

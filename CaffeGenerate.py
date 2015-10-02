@@ -177,15 +177,18 @@ def eltwisetemplate(node):
 def FC_template(node):
     weight_filler_string = getFillerString(node.weight_filler, 'weight_filler')
     bias_filler_string = getFillerString(node.bias_filler, 'bias_filler')
-
+    if node.specax:
+        axstring = 'axis: %i'%node.axis
+    else:
+        axstring = ''
     string = '''\
     inner_product_param {
         num_output: %i
 %s
 %s
-        axis: %i
+%s
     }
-''' % (node.num_output, weight_filler_string, bias_filler_string, node.axis)
+''' % (node.num_output, weight_filler_string, bias_filler_string,axstring)
 
     return string
 
