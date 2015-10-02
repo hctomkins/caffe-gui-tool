@@ -829,9 +829,8 @@ class ConvNode(Node, CaffeTreeNode):
             layout.prop(self, "stride_w")
         layout.label("Weight Filler")
         self.weight_filler.draw(context, layout)
-        if self.bias_term:
-            layout.label("bias Filler")
-            self.bias_filler.draw(context, layout)
+        layout.label("bias Filler")
+        self.bias_filler.draw(context, layout)
 
         self.draw_extra_params(context, layout)
 
@@ -1148,7 +1147,7 @@ class ReLuNode(Node, CaffeTreeNode):
 
     # === Custom Properties ===
     negative_slope = bpy.props.FloatProperty(default=0)
-    # engine = bpy.props.EnumProperty(items=engines, default='DEFAULT')
+    negslope = bpy.props.BoolProperty(default=0,name='Negative Slope')
 
     # === Optional Functions ===
     def init(self, context):
@@ -1166,7 +1165,9 @@ class ReLuNode(Node, CaffeTreeNode):
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
-        layout.prop(self, "negative_slope")
+        layout.prop(self,"negslope")
+        if self.negslope:
+            layout.prop(self, "negative_slope")
         #layout.prop(self, "engine")
         self.draw_extra_params(context, layout)
 
@@ -1734,7 +1735,7 @@ class SolverNode(Node, CaffeTreeNode):
                    ("poly", "poly", "Polinomial"),
                    ("sigmoid", "sigmoid", "Sigmoid")]
 
-    regularization_types = [("L1", "L1", "L1"), ("L2", "L2", "L2")]
+    regularization_types = [("NONE","NONE","NONE"),("L1", "L1", "L1"), ("L2", "L2", "L2")]
 
     gputoggles = []
     gpunum = getgpus()

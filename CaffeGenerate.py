@@ -66,14 +66,13 @@ def conv_template(node):
     string = '''\
     convolution_param {
         num_output: %i
-        bias_term: %i
 %s
 %s
 %s
 %s
 %s
     }
-''' % (node.num_output, node.bias_term, padding_string, kernel_string, stride_string, weight_filler_string,
+''' % (node.num_output, padding_string, kernel_string, stride_string, weight_filler_string,
        bias_filler_string)
     #loadable
     return string
@@ -182,12 +181,11 @@ def FC_template(node):
     string = '''\
     inner_product_param {
         num_output: %i
-        bias_term: %i
 %s
 %s
         axis: %i
     }
-''' % (node.num_output, node.bias_term, weight_filler_string, bias_filler_string, node.axis)
+''' % (node.num_output, weight_filler_string, bias_filler_string, node.axis)
 
     return string
 
@@ -315,8 +313,13 @@ def solver_template(node):
     delta_string = ''
     if node.solver_type == 'ADAGRAD':
         delta_string = 'delta %f' % node.delta
-
-    string = ''' \
+    if node.regularization_type != 'NONE':
+        string = ''' \
+regularization_type: "%s"
+        ''' %node.regularization_type
+    else:
+        string = ''
+    string += ''' \
 net: "%s"
 test_iter: %i
 test_interval: %i
@@ -331,7 +334,6 @@ lr_policy: "%s"
 %s
 momentum: %f
 weight_decay: %f
-regularization_type: "%s"
 snapshot: %i
 snapshot_prefix: "%s"
 snapshot_diff: %i
@@ -343,7 +345,7 @@ debug_info: %i
 snapshot_after_train: %i
 ''' % (net_path, node.test_iter, node.test_interval, node.test_compute_loss, node.test_initialization, node.base_lr,
        node.display, node.average_loss, node.max_iter,
-       node.iter_size, node.lr_policy, lr_string, node.momentum, node.weight_decay, node.regularization_type,
+       node.iter_size, node.lr_policy, lr_string, node.momentum, node.weight_decay,
        node.snapshot, node.snapshot_prefix, node.snapshot_diff,
        node.solver_mode, random_seed_string, node.solver_type, delta_string, node.debug_info, node.snapshot_after_train)
     return "\n".join(filter(lambda x: x.strip(), string.splitlines())) + "\n"
@@ -448,11 +450,14 @@ def LRNtemplate(node):
 
 
 def Relutemplate(node):
-    string = '''\
-    relu_param {
-        negative_slope: %f
-    }
-    ''' % (node.negative_slope)
+    if node.negslope:
+        string = '''\
+        relu_param {
+            negative_slope: %f
+        }
+        ''' % (node.negative_slope)
+    else:
+        string = ''
     return string
 
 
