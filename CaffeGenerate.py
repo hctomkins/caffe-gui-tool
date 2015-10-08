@@ -349,7 +349,7 @@ snapshot_after_train: %i
 ''' % (net_path, node.test_iter, node.test_interval, node.test_compute_loss, node.test_initialization, node.base_lr,
        node.display, node.average_loss, node.max_iter,
        node.iter_size, node.lr_policy, lr_string, node.momentum, node.weight_decay,
-       node.snapshot, node.snapshot_prefix, node.snapshot_diff,
+       node.snapshot, node.snapshot_prefix+node.solvername, node.snapshot_diff,
        node.solver_mode, random_seed_string, node.solver_type, delta_string, node.debug_info, node.snapshot_after_train)
     return "\n".join(filter(lambda x: x.strip(), string.splitlines())) + "\n"
 
