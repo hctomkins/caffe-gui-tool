@@ -19,4 +19,4 @@ For [**installation instructions**](http://bit.ly/1AnTVD2) please see [http://ch
 
 ####ConvNet
 
-![alt tag](https://drive.google.com/file/d/0B3CXFwB8EKjIWU90ck8wQ04zZ0U/view?usp=sharing)
+![alt tag](https://dl.dropboxusercontent.com/u/10860244/Selection_001.png)
