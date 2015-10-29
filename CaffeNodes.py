@@ -29,7 +29,7 @@ def calcsize(self, context, axis='x'):
     reversals = []
     passes = []
     while 1 == 1:
-        if node.bl_idname == "ConvNodeType":
+        if node.bl_idname in ["ConvNodeType","PoolNodeType"]:
             #print (node.inputs[0])
             #print(dir(node.inputs[0]))
             #print(type(node.inputs[0]))
@@ -118,17 +118,17 @@ def calcsize(self, context, axis='x'):
             fcsizes.extend([node.num_output])
             node = node.inputs[0].links[0].from_node
             #print (node)
-        elif node.bl_idname == "PoolNodeType":
-            kernelsizes.extend([0])
-            paddings.extend([0])
-            strides.extend([1])
-            fcsizes.extend([0])
-            passes.extend([0])
-            reversals.extend([0])
-            poolsizes.extend([node.kernel_size])
-            poolstrides.extend([node.stride])
-            offsets.extend([1])
-            node = node.inputs[0].links[0].from_node
+        # elif node.bl_idname == "PoolNodeType":
+        #     kernelsizes.extend([0])
+        #     paddings.extend([0])
+        #     strides.extend([1])
+        #     fcsizes.extend([0])
+        #     passes.extend([0])
+        #     reversals.extend([0])
+        #     poolsizes.extend([node.kernel_size])
+        #     poolstrides.extend([node.stride])
+        #     offsets.extend([1])
+        #     node = node.inputs[0].links[0].from_node
         elif node.bl_idname == "DataNodeType":
             # When the data node is reached, we must be at the back of the nodetree, so start to work forwards
             square = 0
@@ -416,6 +416,11 @@ class DataNode(Node, CaffeTreeNode):
         ("ImageData", "ImageData", "Image files"),
         ("HDF5Data", "HDF5Data", "HDF5 Data")
     ]
+    Phases = [
+        ("TRAINANDTEST","TRAINANDTEST","Train and Test"),
+        ("TRAIN","TRAIN","Train"),
+        ("TEST","TEST","Test")
+    ]
     # === Custom Properties ===
 
     db_type = bpy.props.EnumProperty(name="Database type", description="Type of Data", items=DBs, default='HDF5Data')
@@ -437,20 +442,21 @@ class DataNode(Node, CaffeTreeNode):
     )
 
     train_data = bpy.props.StringProperty(
-        name="Train Data Path",
+        name="Train Data File",
         default="",
         description="Get the path to the data",
         subtype='FILE_PATH'
     )
 
     test_data = bpy.props.StringProperty(
-        name="Test Data Path",
+        name="Test Data File",
         default="",
         description="Get the path to the data",
         subtype='FILE_PATH'
     )
 
     # Transformation params
+    #include_in = bpy.props.EnumProperty(name="Include in", description="Phases to include in",items=Phases,default='TRAINANDTEST')
     scale = bpy.props.FloatProperty(default=1.0, min=0)
     mirror = bpy.props.BoolProperty(name='Random Mirror', default=False)
     use_mean_file = bpy.props.BoolProperty(name='Use mean file', default=False)
@@ -492,16 +498,21 @@ class DataNode(Node, CaffeTreeNode):
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
         layout.prop(self, "db_type")
-
+        layout.prop(self, "include_in")
         if self.db_type in ('ImageData', 'HDF5Data'):
-            layout.prop(self, "train_data")
-            layout.prop(self, "test_data")
+            if self.include_in != 'TEST':
+                layout.prop(self, "train_data")
+            if self.include_in != 'TRAIN':
+                layout.prop(self, "test_data")
         else:
-            layout.prop(self, "train_path")
-            layout.prop(self, "test_path")
-
-        layout.prop(self, "train_batch_size")
-        layout.prop(self, "test_batch_size")
+            if self.include_in != 'TEST':
+                layout.prop(self, "train_path")
+            if self.include_in != 'TRAIN':
+                layout.prop(self, "test_path")
+        if self.include_in != 'TEST':
+            layout.prop(self, "train_batch_size")
+        if self.include_in != 'TRAIN':
+            layout.prop(self, "test_batch_size")
 
         if self.db_type in ('ImageData', 'LMDB', 'LEVELDB'):
             layout.label("Transformation Parameters")
@@ -551,7 +562,7 @@ class filler_p_g(bpy.types.PropertyGroup):
     mean = bpy.props.FloatProperty(default=0.0, soft_max=1000.0, soft_min=-1000.0)
     std = bpy.props.FloatProperty(default=1.0, soft_max=1000.0, soft_min=-1000.0)
     variance_norm = bpy.props.EnumProperty(name='Weight variance norm', default='FAN_IN', items=vnormtypes)
-    is_sparse = bpy.props.BoolProperty(name="Use Sprasity", default=False)
+    is_sparse = bpy.props.BoolProperty(name="Use Sparsity", default=False)
     sparse = bpy.props.IntProperty(default=100, min=1)
 
     def draw(self, context, layout):
@@ -592,8 +603,22 @@ class PoolNode(Node, CaffeTreeNode):
         ("STOCHASTIC", "SGD", "Stochastic pooling"),
     ]
 
-    kernel_size = bpy.props.IntProperty(default=2, min=1, soft_max=5)
-    stride = bpy.props.IntProperty(default=2, min=1, soft_max=5)
+    square_padding = bpy.props.BoolProperty(name="Equal x,y padding", default=True)
+    pad = bpy.props.IntProperty(name="Padding", default=0, min=0, soft_max=5)
+    pad_h = bpy.props.IntProperty(name="Padding height", default=0, min=0, soft_max=5)
+    pad_w = bpy.props.IntProperty(name="Padding width", default=0, min=0, soft_max=5)
+
+    square_kernel = bpy.props.BoolProperty(name="Equal x,y kernel", default=True)
+    kernel_size = bpy.props.IntProperty(name="Kernel size", default=5, min=1, soft_max=25)
+    kernel_h = bpy.props.IntProperty(name="Kernel height", default=5, min=1, soft_max=25)
+    kernel_w = bpy.props.IntProperty(name="Kernel width", default=5, min=1, soft_max=25)
+
+    # TODO: Maybe add group
+
+    square_stride = bpy.props.BoolProperty(name="Equal x,y stride", default=True)
+    stride = bpy.props.IntProperty(name="Stride", default=1, min=1, soft_max=5)
+    stride_h = bpy.props.IntProperty(name="Stride height", default=1, min=1, soft_max=5)
+    stride_w = bpy.props.IntProperty(name="Stride width", default=1, min=1, soft_max=5)
     mode = bpy.props.EnumProperty(name='Mode', default='MAX', items=modes)
     # === Optional Functions ===
     def init(self, context):
@@ -615,8 +640,30 @@ class PoolNode(Node, CaffeTreeNode):
                          (calcsize(self, context, axis='x'), calcsize(self, context, axis='y')))
         else:
             layout.label("image output is %s pixels" % calcsize(self, context, axis='x'))
-        layout.prop(self, "kernel_size")
-        layout.prop(self, "stride")
+
+
+        if self.square_padding:
+            layout.prop(self, "pad")
+        else:
+            layout.prop(self, "pad_h")
+            layout.prop(self, "pad_w")
+
+
+        if self.square_kernel:
+            layout.prop(self, "kernel_size")
+        else:
+            layout.prop(self, "kernel_h")
+            layout.prop(self, "kernel_w")
+
+
+        if self.square_stride:
+            layout.prop(self, "stride")
+        else:
+            layout.prop(self, "stride_h")
+            layout.prop(self, "stride_w")
+        layout.prop(self, "square_padding")
+        layout.prop(self, "square_kernel")
+        layout.prop(self, "square_stride")
         layout.prop(self, "mode")
 
 
@@ -807,26 +854,26 @@ class ConvNode(Node, CaffeTreeNode):
         layout.prop(self, "num_output")
         layout.prop(self, "bias_term")
 
-        layout.prop(self, "square_padding")
         if self.square_padding:
             layout.prop(self, "pad")
         else:
             layout.prop(self, "pad_h")
             layout.prop(self, "pad_w")
 
-        layout.prop(self, "square_kernel")
         if self.square_kernel:
             layout.prop(self, "kernel_size")
         else:
             layout.prop(self, "kernel_h")
             layout.prop(self, "kernel_w")
 
-        layout.prop(self, "square_stride")
         if self.square_stride:
             layout.prop(self, "stride")
         else:
             layout.prop(self, "stride_h")
             layout.prop(self, "stride_w")
+        layout.prop(self, "square_padding")
+        layout.prop(self, "square_kernel")
+        layout.prop(self, "square_stride")
         layout.label("Weight Filler")
         self.weight_filler.draw(context, layout)
         layout.label("bias Filler")

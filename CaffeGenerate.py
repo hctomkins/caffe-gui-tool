@@ -592,13 +592,18 @@ class Solve(bpy.types.Operator):
                 elif node.db_type == 'HDF5Data':
                     train_params = [hdf5_data_template(node, node.train_data, node.train_batch_size)]
                     test_params = [hdf5_data_template(node, node.test_data, node.test_batch_size)]
-
+                origin = node.include_in
                 node.include_in = "TRAIN"
                 train_string = layer_template(node, tops, bottoms, train_params)
                 node.include_in = "TEST"
                 test_string = layer_template(node, tops, bottoms, test_params)
-
-                string = train_string + test_string
+                node.include_in = origin
+                if node.include_in == 'TRAIN':
+                    string = train_string
+                elif node.include_in == 'TEST':
+                    string = test_string
+                else:
+                    string = train_string + test_string
 
                 #TODO: Finish dstring
                 dstring = ''
