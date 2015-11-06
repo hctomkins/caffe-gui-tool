@@ -13,7 +13,6 @@ def calcsize(self, context, axis='x'):
     size up to a given layer.'''
     x = 0.0
     node = self
-    # print (node.bl_idname)
     try:
         node.inputs[0].links[0].from_node
     except IndexError:
@@ -22,17 +21,12 @@ def calcsize(self, context, axis='x'):
     kernelsizes = []
     strides = []
     paddings = []
-    poolstrides = []
-    poolsizes = []
     offsets = []
     fcsizes = []
     reversals = []
     passes = []
     while 1 == 1:
-        if node.bl_idname in ["ConvNodeType","PoolNodeType"]:
-            #print (node.inputs[0])
-            #print(dir(node.inputs[0]))
-            #print(type(node.inputs[0]))
+        if node.bl_idname in ["ConvNodeType","PoolNodeType","DeConvNodeType"]:
             if node.square_kernel:
                 kernelsizes.extend([node.kernel_size])
             elif axis == 'x':
@@ -59,76 +53,23 @@ def calcsize(self, context, axis='x'):
                 paddings.extend([node.pad_h])
             else:
                 raise RuntimeError
-            poolsizes.extend([1])
-            poolstrides.extend([1])
             offsets.extend([0])
             fcsizes.extend([0])
             passes.extend([0])
-            reversals.extend([0])
-            node = node.inputs[0].links[0].from_node
-        if node.bl_idname == "DeConvNodeType":
-            #print (node.inputs[0])
-            #print(dir(node.inputs[0]))
-            #print(type(node.inputs[0]))
-            if node.square_kernel:
-                kernelsizes.extend([node.kernel_size])
-            elif axis == 'x':
-                kernelsizes.extend([node.kernel_w])
-            elif axis == 'y':
-                kernelsizes.extend([node.kernel_h])
+            if node.bl_idname == "DeConvNodeType":
+                reversals.extend([1])
             else:
-                raise RuntimeError
-
-            if node.square_stride:
-                strides.extend([node.stride])
-            elif axis == 'x':
-                strides.extend([node.stride_w])
-            elif axis == 'y':
-                strides.extend([node.stride_h])
-            else:
-                raise RuntimeError
-
-            if node.square_padding:
-                paddings.extend([node.pad])
-            elif axis == 'x':
-                paddings.extend([node.pad_w])
-            elif axis == 'y':
-                paddings.extend([node.pad_h])
-            else:
-                raise RuntimeError
-            poolsizes.extend([1])
-            poolstrides.extend([1])
-            offsets.extend([0])
-            fcsizes.extend([0])
-            passes.extend([0])
-            reversals.extend([1])
+                reversals.extend([0])
             node = node.inputs[0].links[0].from_node
         elif node.bl_idname == "FCNodeType":
-            #print (node.inputs[0])
-            #print(dir(node.inputs[0]))
-            #print(type(node.inputs[0]))
             kernelsizes.extend([0])
             strides.extend([0])
             paddings.extend([0])
-            poolsizes.extend([0])
-            poolstrides.extend([0])
             offsets.extend([0])
             passes.extend([0])
             reversals.extend([0])
             fcsizes.extend([node.num_output])
             node = node.inputs[0].links[0].from_node
-            #print (node)
-        # elif node.bl_idname == "PoolNodeType":
-        #     kernelsizes.extend([0])
-        #     paddings.extend([0])
-        #     strides.extend([1])
-        #     fcsizes.extend([0])
-        #     passes.extend([0])
-        #     reversals.extend([0])
-        #     poolsizes.extend([node.kernel_size])
-        #     poolstrides.extend([node.stride])
-        #     offsets.extend([1])
-        #     node = node.inputs[0].links[0].from_node
         elif node.bl_idname == "DataNodeType":
             # When the data node is reached, we must be at the back of the nodetree, so start to work forwards
             square = 0
@@ -157,27 +98,22 @@ def calcsize(self, context, axis='x'):
                 stride = strides[node]
                 ksize = kernelsizes[node]
                 offset = offsets[node]
-                poolstride = poolstrides[node]
-                poolsize = poolsizes[node]
                 reversal = reversals[node]
                 if passes[node] == 0:
                     if fcsizes[node] == 0:
                         if reversal == 0:
                             #########################
                             x = ((x + (2 * padding) - ksize) / stride + 1 - offset)
-                            x = (x - poolsize) / poolstride + 1
                             ###################
                         else:
                             x = (x * stride - stride) + ksize - 2 * padding
                     else:
                         x = fcsizes[node]
             break
-        else:
+        elif node.bl_idname not in ["DataNodeType","FCNodeType","DeConvNodeType","ConvNodeType","PoolNodeType"]:
             kernelsizes.extend([0])
             strides.extend([0])
             paddings.extend([0])
-            poolsizes.extend([0])
-            poolstrides.extend([0])
             offsets.extend([0])
             reversals.extend([0])
             fcsizes.extend([0])

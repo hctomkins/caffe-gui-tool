@@ -510,16 +510,13 @@ def isinplace(node):
 
 
 def findsocket(socketname, node):  #Given a node, find the position of a certain output socket
-    print (node.name)
     for number, socket in enumerate(node.outputs):
         if socket.name == socketname:
-            print(number)
             return number
     raise TypeError
 
 
 def autotop(node, socket, orderpass=0):  #Assigns an arbitrary top name to a node
-    print('autotop')
     if isinplace(node) and not orderpass:
         top = autobottom(node, 0, orderpass=0)
     else:
@@ -528,7 +525,6 @@ def autotop(node, socket, orderpass=0):  #Assigns an arbitrary top name to a nod
 
 
 def autobottom(node, socketnum, orderpass=0):  #Finds the bottom of a node socket
-    print ('autobottom')
 
     if isinplace(nodebefore(node, socketnum)) and not orderpass:
         socketbelow = nodebefore(node, socketnum).inputs[0].links[0].from_socket.name
@@ -546,7 +542,6 @@ def getbottomsandtops(node, orderpass=0):
     for socknum, input in enumerate(node.inputs):
         if input.is_linked:
             bottom = input.links[0].from_socket.output_name
-            print(input.links[0].from_socket.name)
             if bottom != '':
                 bottoms.extend([bottom])
             else:
@@ -559,18 +554,22 @@ def getbottomsandtops(node, orderpass=0):
 class Solve(bpy.types.Operator):
     """Generate Caffe solver"""  # blender will use this as a tooltip for menu items and buttons.
     bl_idname = "nodes.make_solver"  # unique identifier for buttons and menu items to reference.
-    bl_label = "Create Solution"  # display name in the interface.
+    bl_label = "Create Protoxt Only"  # display name in the interface.
     bl_options = {'REGISTER'}  # enable undo for the operator.
 
     def execute(self, context):  # execute() is called by blender when running the operator.
         graph = []
+        for space in bpy.context.area.spaces:
+            if space.type == 'NODE_EDITOR':
+                tree = space.edit_tree
+        bpy.ops.node.select_all()
+        if len(context.selected_nodes) == 0:
+            bpy.ops.node.select_all()
         ########################################### Main loop
         for node in context.selected_nodes:
             nname = node.name
             string = ''
             bottoms, tops = getbottomsandtops(node)
-            print(tops)
-            print (bottoms)
             special_params = []
 
             ###########################
@@ -676,7 +675,8 @@ class Solve(bpy.types.Operator):
             elif node.bl_idname == 'MVNNodeType':
                 special_params.append(mvntemplate(node))
             elif string == 0:
-                print (node.bl_idname)
+                raise OSError
+                pass
             if node.bl_idname != 'SolverNodeType':
                 if node.bl_idname != 'DataNodeType':
                     string = layer_template(node, tops, bottoms, special_params)
@@ -718,8 +718,3 @@ def register():
 
 def unregister():
     bpy.utils.unregister_class(Solve)
-
-# This allows you to run the script directly from blenders text editor
-# to test the addon without having to install it.
-if __name__ == "__main__":
-    register()
