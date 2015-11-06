@@ -31,11 +31,12 @@ def getactivefcurve():
     ncurves = 0
     for object in bpy.context.selected_objects:
         if object.animation_data:
-            for curve in object.animation_data.action.fcurves.items():
-                if curve[1].select:
-                    ncurves += 1
-                    activeobject = object
-                    activecurve = curve[1]
+            if object.animation_data.action:
+                for curve in object.animation_data.action.fcurves.items():
+                    if curve[1].select:
+                        ncurves += 1
+                        activeobject = object
+                        activecurve = curve[1]
     if ncurves == 1:
         return activecurve, activeobject
     elif ncurves == 0:
@@ -91,6 +92,7 @@ def initSceneProperties():
         default=1,
         description="Make the points added to the loss graph equal to the iteration, rather than the printed line"
     )
+    bpy.types.Scene.donetraining = bpy.props.IntProperty(default=1)
     return
 
 
@@ -116,13 +118,13 @@ class RunDialogPanel(bpy.types.Panel):
     bl_region_type = "UI"
 
     def draw(self, context):
-        scn = context.scene
+        scn = bpy.context.scene
         self.layout.operator("nodes.make_solver")
         self.layout.prop(scn, "savetempdata")
         self.layout.prop(scn, "filecomment")
         self.layout.prop(scn, "comment")
         self.layout.operator("nodes.run_solver")
-
+        self.layout.operator("nodes.cancel_solver")
 
 class GraphInfoPanel(bpy.types.Panel):
     bl_label = "Selected loss plot"

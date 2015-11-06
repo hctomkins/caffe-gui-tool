@@ -571,11 +571,14 @@ class PoolNode(Node, CaffeTreeNode):
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
-        if calcsize(self, context, axis='x') != calcsize(self, context, axis='y'):
-            layout.label("image x,y output is %s,%s pixels" %
-                         (calcsize(self, context, axis='x'), calcsize(self, context, axis='y')))
-        else:
-            layout.label("image output is %s pixels" % calcsize(self, context, axis='x'))
+        try:
+            if calcsize(self, context, axis='x') != calcsize(self, context, axis='y'):
+                layout.label("image x,y output is %s,%s pixels" %
+                             (calcsize(self, context, axis='x'), calcsize(self, context, axis='y')))
+            else:
+                layout.label("image output is %s pixels" % calcsize(self, context, axis='x'))
+        except IndexError:
+            pass
 
 
         if self.square_padding:
@@ -781,12 +784,14 @@ class ConvNode(Node, CaffeTreeNode):
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
         #TODO: Finish calcsize
-
-        if calcsize(self, context, axis='x') != calcsize(self, context, axis='y'):
-            layout.label("image x,y output is %s,%s pixels" %
-                         (calcsize(self, context, axis='x'), calcsize(self, context, axis='y')))
-        else:
-            layout.label("image output is %s pixels" % calcsize(self, context, axis='x'))
+        try:
+            if calcsize(self, context, axis='x') != calcsize(self, context, axis='y'):
+                layout.label("image x,y output is %s,%s pixels" %
+                             (calcsize(self, context, axis='x'), calcsize(self, context, axis='y')))
+            else:
+                layout.label("image output is %s pixels" % calcsize(self, context, axis='x'))
+        except IndexError:
+            pass
         layout.prop(self, "num_output")
         layout.prop(self, "bias_term")
 
@@ -874,12 +879,14 @@ class DeConvNode(Node, CaffeTreeNode):
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
         #TODO: Finish calcsize
-
-        if calcsize(self, context, axis='x') != calcsize(self, context, axis='y'):
-            layout.label("image x,y output is %s,%s pixels" %
-                         (calcsize(self, context, axis='x'), calcsize(self, context, axis='y')))
-        else:
-            layout.label("image output is %s pixels" % calcsize(self, context, axis='x'))
+        try:
+            if calcsize(self, context, axis='x') != calcsize(self, context, axis='y'):
+                layout.label("image x,y output is %s,%s pixels" %
+                             (calcsize(self, context, axis='x'), calcsize(self, context, axis='y')))
+            else:
+                layout.label("image output is %s pixels" % calcsize(self, context, axis='x'))
+        except IndexError:
+            pass
 
         layout.prop(self, "num_output")
         layout.prop(self, "bias_term")
@@ -952,7 +959,10 @@ class FCNode(Node, CaffeTreeNode):
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
-        layout.label("Network is now %s neurons" % calcsize(self, context))
+        try:
+            layout.label("Network is now %s neurons" % calcsize(self, context))
+        except IndexError:
+            pass
         layout.prop(self, "num_output")
         layout.prop(self, "bias_term")
         layout.prop(self, "specax")

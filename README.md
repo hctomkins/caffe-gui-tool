@@ -2,20 +2,27 @@
 ==============
 This a node based tool for creating caffe networks. It works inside the graphics application 'blender' as a plugin. The reason for this is blender's highly stable, and universally compatible node editor.
 ##Important
-**CGT features change regularly. If you update and your nodetree no longer compiles, all the nodes in your tree must be Re-added. A prototxt load feature will be added in the next update to make this process redundant.**
+**The latest commits bundle the application into one single extension for blender. You will need to disable/remove all the old CGT addons, and then install the latest version.**
 
-###Potentially useful features:
+On the plus side - CGT now has .prototxt import features, and asyncrounous network training/plotting.
+
+[**Installation Tutorial Video**](http://bit.ly/1AnTVD2)
+
+
+[**Installation and usage instructions on the wiki**](http://bit.ly/1AnTVD2)
+
+###Useful features:
+* .prototxt import - load networks up to and including googlenet
+* Train networks asyncronously within blender
+* Plot loss in real time
+* Manage different network structures, store networks with attached comments
+* Plot and compare Multiple networks' loss
 * Autonaming of top,bottom, and layer names
-* Visual editing of later properties
+* Visual editing of layer properties
 * Reliable duplication of layers with SHIFT+D
-* Saving & Loading nodetrees in blender's native 'xxxx.blend' format for later editing
-* Generation of Train_test, _deploy, _solver, and the training .sh script
+* Saving & Loading nodetrees, along with their performance and info data for later editing
+* Generation of train_test, _deploy, _solver, prototxts, and the training bash script
 
-###WIP features:
-* .prototxt import
-* Training network within blender, plotting train & test error
-
-For [**installation instructions**](http://bit.ly/1AnTVD2) please see [http://chasvortex.github.io/caffe-gui-tool/](http://bit.ly/1AnTVD2)
 
 ####ConvNet
 
