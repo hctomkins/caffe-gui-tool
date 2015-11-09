@@ -7,7 +7,7 @@ This a node based tool for creating caffe networks. It works inside the graphics
 On the plus side - CGT now has .prototxt import features, and asyncronous network training/plotting. Everything has also been hugely refactored for clarity.
 * Huge changes such as the recent commits mean bugs will slip through. Please feel free to report any in the issues manager and I will try and patch them same-day.
 
-[**Installation and usage instructions on the wiki**](http://bit.ly/1HCES6r)
+## [**Installation and usage instructions on the wiki**](http://bit.ly/1HCES6r)
 
 ## Useful features:
 * .prototxt import - load networks up to and including googlenet
