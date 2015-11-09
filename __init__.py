@@ -11,14 +11,16 @@ bl_info = {
 if "bpy" in locals():
     import imp
 
-    imp.reload(CaffeGenerate)
-    imp.reload(CaffeNodes)
-    imp.reload(Loadproto)
-    imp.reload(Arrange)
-    imp.reload(PlotGraph)
+    imp.reload(IOwriteprototxt)
+    imp.reload(IOcexp)
+    imp.reload(CGTNodes)
+    imp.reload(IOloadprototxt)
+    imp.reload(CGTArrangeHelper)
+    imp.reload(CGTGraph)
     print("Reloaded multifiles")
 else:
-    from . import CaffeGenerate, CaffeNodes, Loadproto,Arrange, PlotGraph
+    from . import IOwriteprototxt, CGTNodes, IOloadprototxt, CGTArrangeHelper, CGTGraph, IOcexp
+
     print("Imported multifiles")
 
 import bpy
@@ -26,7 +28,6 @@ import random
 from bpy.props import *
 
 
-############# This class is needed for a blender init script to be simple
 def getactivefcurve():
     ncurves = 0
     for object in bpy.context.selected_objects:
@@ -40,9 +41,9 @@ def getactivefcurve():
     if ncurves == 1:
         return activecurve, activeobject
     elif ncurves == 0:
-        return None,None
+        return None, None
     else:
-        return False,False
+        return False, False
 
 
 def initSceneProperties():
@@ -87,10 +88,15 @@ def initSceneProperties():
         default="",
         description="Add a string to beginning of filename to describe experiment"
     )
-    bpy.types.Scene.acframes = bpy.props.BoolProperty(
-        name="Force frame = iteration",
+    bpy.types.Scene.loadtree = bpy.props.BoolProperty(
+        name="Load Node tree",
         default=1,
-        description="Make the points added to the loss graph equal to the iteration, rather than the printed line"
+        description="Load the node tree from .cexp"
+    )
+    bpy.types.Scene.loadloss = bpy.props.BoolProperty(
+        name="Load Loss graphs",
+        default=1,
+        description="Load the loss data from .cexp"
     )
     bpy.types.Scene.donetraining = bpy.props.IntProperty(default=1)
     return
@@ -126,13 +132,14 @@ class RunDialogPanel(bpy.types.Panel):
         self.layout.operator("nodes.run_solver")
         self.layout.operator("nodes.cancel_solver")
 
+
 class GraphInfoPanel(bpy.types.Panel):
     bl_label = "Selected loss plot"
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
 
     def draw(self, context):
-        activecurve,activeobject = getactivefcurve()
+        activecurve, activeobject = getactivefcurve()
         if activecurve == None:
             self.layout.label("No curve selected")
         elif not activecurve:
@@ -143,6 +150,11 @@ class GraphInfoPanel(bpy.types.Panel):
                 self.layout.label(activeobject["comment"])
             except KeyError:
                 self.layout.label("No comment")
+            self.layout.operator("nodes.load_tree_from_curve")
+            if activeobject["originaltree"] != '':
+                self.layout.label("Original tree loaded to:")
+                self.layout.label(activeobject["originaltree"])
+
 
 class CexpLoadPanel(bpy.types.Panel):
     bl_label = "Load experiment"
@@ -151,7 +163,9 @@ class CexpLoadPanel(bpy.types.Panel):
 
     def draw(self, context):
         scn = context.scene
-        self.layout.prop(scn,"loadtempdata")
+        self.layout.prop(scn, "loadtempdata")
+        self.layout.prop(scn, "loadtree")
+        self.layout.prop(scn, "loadloss")
         self.layout.operator("nodes.load_trained_solver")
 
 
@@ -160,12 +174,13 @@ def register():
     bpy.utils.register_class(LoadDialogPanel)
     bpy.utils.register_class(CexpLoadPanel)
     bpy.utils.register_class(GraphInfoPanel)
-    #bpy.utils.register_module(__name__)
-    Arrange.register()
-    PlotGraph.register()
-    CaffeGenerate.register()
-    CaffeNodes.register()
-    Loadproto.register()
+    # bpy.utils.register_module(__name__)
+    CGTArrangeHelper.register()
+    CGTGraph.register()
+    IOwriteprototxt.register()
+    CGTNodes.register()
+    IOloadprototxt.register()
+    IOcexp.register()
 
 
 def unregister():
@@ -173,8 +188,9 @@ def unregister():
     bpy.utils.unregister_class(LoadDialogPanel)
     bpy.utils.unregister_class(CexpLoadPanel)
     bpy.utils.unregister_class(GraphInfoPanel)
-    Arrange.unregister()
-    PlotGraph.unregister()
-    CaffeGenerate.unregister()
-    CaffeNodes.unregister()
-    #bpy.utils.unregister_module(__name__)
+    CGTArrangeHelper.unregister()
+    CGTGraph.unregister()
+    IOwriteprototxt.unregister()
+    CGTNodes.unregister()
+    IOcexp.unregister()
+    # bpy.utils.unregister_module(__name__)

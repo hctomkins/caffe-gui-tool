@@ -1,5 +1,5 @@
 # TODO: Add properties to solver
-#TODO: snapshot_format not available in this version. update later.
+# TODO: snapshot_format not available in this version. update later.
 
 __author__ = 'hugh'
 bl_info = {
@@ -7,10 +7,8 @@ bl_info = {
     "category": "Object",
 }
 
-import bpy
-import random
-import time
 import os
+import bpy
 
 tab = '    '
 tab2 = tab + tab
@@ -74,7 +72,7 @@ def conv_template(node):
     }
 ''' % (node.num_output, padding_string, kernel_string, stride_string, weight_filler_string,
        bias_filler_string)
-    #loadable
+    # loadable
     return string
 
 
@@ -105,7 +103,7 @@ def image_data_param_template(node, source, batch_size):
     return string
 
 
-#TODO: Finish mean_value and random crop
+# TODO: Finish mean_value and random crop
 def transform_param_template(node):
     mean_file_string = ''
     if node.use_mean_file:
@@ -142,7 +140,7 @@ def pool_template(node):
         stride: %i
     }
 ''' % (node.mode, node.kernel_size, node.stride)
-    #Loadable
+    # Loadable
     return string
 
 
@@ -154,7 +152,7 @@ def mvntemplate(node):
         eps: %f
         }
 ''' % (node.normalize_variance, node.across_channels, node.eps)
-    #Loadable
+    # Loadable
     return string
 
 
@@ -178,7 +176,7 @@ def FC_template(node):
     weight_filler_string = getFillerString(node.weight_filler, 'weight_filler')
     bias_filler_string = getFillerString(node.bias_filler, 'bias_filler')
     if node.specax:
-        axstring = 'axis: %i'%node.axis
+        axstring = 'axis: %i' % node.axis
     else:
         axstring = ''
     string = '''\
@@ -188,7 +186,7 @@ def FC_template(node):
 %s
 %s
     }
-''' % (node.num_output, weight_filler_string, bias_filler_string,axstring)
+''' % (node.num_output, weight_filler_string, bias_filler_string, axstring)
 
     return string
 
@@ -319,7 +317,7 @@ def solver_template(node):
     if node.regularization_type != 'NONE':
         string = ''' \
 regularization_type: "%s"
-        ''' %node.regularization_type
+        ''' % node.regularization_type
     else:
         string = ''
     string += ''' \
@@ -349,7 +347,7 @@ snapshot_after_train: %i
 ''' % (net_path, node.test_iter, node.test_interval, node.test_compute_loss, node.test_initialization, node.base_lr,
        node.display, node.average_loss, node.max_iter,
        node.iter_size, node.lr_policy, lr_string, node.momentum, node.weight_decay,
-       node.snapshot, node.snapshot_prefix+node.solvername, node.snapshot_diff,
+       node.snapshot, node.snapshot_prefix + node.solvername, node.snapshot_diff,
        node.solver_mode, random_seed_string, node.solver_type, delta_string, node.debug_info, node.snapshot_after_train)
     return "\n".join(filter(lambda x: x.strip(), string.splitlines())) + "\n"
 
@@ -477,24 +475,42 @@ class Vertex():
     pass
 
 
+def multiplemin(iterable, key):
+    toreturn = []
+    firstmin = min(iterable, key=key)
+    toreturn.append(firstmin)
+    smalleriterable = [i for i in iterable if i not in toreturn]
+    if smalleriterable:
+        nextmin = min(smalleriterable, key=key)
+        while key(nextmin) == key(firstmin):
+            print (nextmin.string)
+            toreturn.append(nextmin)
+            smalleriterable = [i for i in iterable if i not in toreturn]
+            if smalleriterable:
+                nextmin = min(smalleriterable, key=key)
+            else:
+                return toreturn
+    return toreturn
+
+
 def reorder(graph):
     res_string = []
     res_dstring = []
     while len(graph) > 0:
-        curr = min(graph, key=lambda x: len(x.bottoms))
-        if len(curr.bottoms) != 0:
-            print('Cycle in graph?!')
+        earlynodes = multiplemin(graph, lambda x: len(x.bottoms))
+        for curr in earlynodes:
+            if len(curr.bottoms) != 0:
+                print('Cycle in graph?!')
+            res_string.append(curr.string)
+            res_dstring.append(curr.dstring)
 
-        res_string.append(curr.string)
-        res_dstring.append(curr.dstring)
-
-        for item in graph:
-            for top in curr.tops:
-                try:
-                    item.bottoms.remove(top)
-                except:
-                    pass
-        graph.remove(curr)
+            for item in graph:
+                for top in curr.tops:
+                    try:
+                        item.bottoms.remove(top)
+                    except:
+                        pass
+            graph.remove(curr)
     return res_string, res_dstring
 
 
@@ -503,20 +519,20 @@ def nodebefore(innode, socket=0):
 
 
 def isinplace(node):
-    if node.bl_idname == 'ReluNodeType': #or node.bl_idname == 'DropoutNodeType':
+    if node.bl_idname == 'ReluNodeType':  # or node.bl_idname == 'DropoutNodeType':
         return 1
     else:
         return 0
 
 
-def findsocket(socketname, node):  #Given a node, find the position of a certain output socket
+def findsocket(socketname, node):  # Given a node, find the position of a certain output socket
     for number, socket in enumerate(node.outputs):
         if socket.name == socketname:
             return number
     raise TypeError
 
 
-def autotop(node, socket, orderpass=0):  #Assigns an arbitrary top name to a node
+def autotop(node, socket, orderpass=0):  # Assigns an arbitrary top name to a node
     if isinplace(node) and not orderpass:
         top = autobottom(node, 0, orderpass=0)
     else:
@@ -524,7 +540,7 @@ def autotop(node, socket, orderpass=0):  #Assigns an arbitrary top name to a nod
     return top
 
 
-def autobottom(node, socketnum, orderpass=0):  #Finds the bottom of a node socket
+def autobottom(node, socketnum, orderpass=0):  # Finds the bottom of a node socket
 
     if isinplace(nodebefore(node, socketnum)) and not orderpass:
         socketbelow = nodebefore(node, socketnum).inputs[0].links[0].from_socket.name
@@ -551,6 +567,165 @@ def getbottomsandtops(node, orderpass=0):
     return bottoms, tops
 
 
+def SolveFunction(context, operatorself=None):
+    graph = []
+    for space in bpy.context.area.spaces:
+        if space.type == 'NODE_EDITOR':
+            tree = space.edit_tree
+    bpy.ops.node.select_all()
+    if len(context.selected_nodes) == 0:
+        bpy.ops.node.select_all()
+    ########################################### Main loop
+    for node in context.selected_nodes:
+        nname = node.name
+        string = ''
+        bottoms, tops = getbottomsandtops(node)
+        special_params = []
+
+        ###########################
+        if node.bl_idname == 'DataNodeType':
+            transform_param = transform_param_template(node)
+            node.n_type = node.db_type
+            Isize = [node.new_height, node.new_width, node.height, node.width]
+            if node.db_type in ('LMDB', 'LEVELDB'):
+                train_params = [data_param_template(node, node.train_path, node.train_batch_size)]
+                test_params = [data_param_template(node, node.test_path, node.test_batch_size)]
+                node.n_type = 'Data'
+                train_params.append(transform_param)
+                test_params.append(transform_param)
+            elif node.db_type == 'ImageData':
+                train_params = [image_data_param_template(node, node.train_data, node.train_batch_size)]
+                test_params = [image_data_param_template(node, node.test_data, node.test_batch_size)]
+                train_params.append(transform_param)
+                test_params.append(transform_param)
+            elif node.db_type == 'HDF5Data':
+                train_params = [hdf5_data_template(node, node.train_data, node.train_batch_size)]
+                test_params = [hdf5_data_template(node, node.test_data, node.test_batch_size)]
+            origin = node.include_in
+            node.include_in = "TRAIN"
+            train_string = layer_template(node, tops, bottoms, train_params)
+            node.include_in = "TEST"
+            test_string = layer_template(node, tops, bottoms, test_params)
+            node.include_in = origin
+            if node.include_in == 'TRAIN':
+                string = train_string
+            elif node.include_in == 'TEST':
+                string = test_string
+            else:
+                string = train_string + test_string
+
+            # TODO: Finish dstring
+            dstring = ''
+        elif node.bl_idname == 'PoolNodeType':
+            special_params.append(pool_template(node))
+        elif node.bl_idname == 'EltwiseNodeType':
+            special_params.append(eltwisetemplate(node))
+        elif node.bl_idname == 'ExpNodeType':
+            special_params.append(exptemplate(node))
+        elif node.bl_idname == 'ConvNodeType':
+            special_params.append(conv_template(node))
+        elif node.bl_idname == 'DeConvNodeType':
+            special_params.append(conv_template(node))
+        elif node.bl_idname == 'FCNodeType':
+            special_params.append(FC_template(node))
+        elif node.bl_idname == 'FlattenNodeType':
+            dstring = string
+        elif node.bl_idname == 'SilenceNodeType':
+            dstring = string
+        elif node.bl_idname == 'LRNNodeType':
+            special_params.append(LRNtemplate(node))
+        elif node.bl_idname == 'AcNodeType':
+            node.type = node.mode
+        elif node.bl_idname == 'ReluNodeType':
+            special_params.append(Relutemplate(node))
+        elif node.bl_idname == 'PReluNodeType':
+            special_params.append(PReLU_template(node))
+            dstring = string
+        elif node.bl_idname == 'DropoutNodeType':
+            special_params.append(dropouttemplate(node))
+        elif node.bl_idname == 'SMLossNodeType':
+            special_params.append(loss_weight_template(node.w))
+            dstring = ''
+        elif node.bl_idname == 'SCELossNodeType':
+            special_params.append(loss_weight_template(node.w))
+            dstring = ''
+        elif node.bl_idname == 'EULossNodeType':
+            special_params.append(loss_weight_template(node.w))
+            dstring = ''
+        elif node.bl_idname == 'ConcatNodeType':
+            special_params.append(Concattemplate(node))
+        elif node.bl_idname == 'AccuracyNodeType':
+            dstring = ''
+        elif node.bl_idname == 'ArgMaxNodeType':
+            special_params.append(argmaxtemplate(node))
+            dstring = string
+        elif node.bl_idname == 'HDF5OutputNodeType':
+            special_params.append(hdf5outputtemplate(node))
+            dstring = ''
+        elif node.bl_idname == 'LogNodeType':
+            special_params.append(logtemplate(node))
+            dstring = string;
+        elif node.bl_idname == 'PowerNodeType':
+            special_params.append(powertemplate(node))
+            dstring = string;
+        elif node.bl_idname == 'ReductionNodeType':
+            special_params.append(reductiontemplate(node))
+            dstring = string;
+        elif node.bl_idname == 'SliceNodeType':
+            special_params.append(slicetemplate(node))
+        elif node.bl_idname == 'NodeReroute':
+            string = ''
+            dstring = ''
+        elif node.bl_idname == 'SolverNodeType':
+            solverstring = solver_template(node)
+            scriptstring = scripttemplate(node.caffe_exec, node.config_path, node.solvername, node.gpus,
+                                          solver=node.solver_mode)
+            if not node.config_path and operatorself:
+                operatorself.report({'ERROR'}, "Solver node config path not set")
+                return {'FINISHED'}
+            configpath = node.config_path
+            solvername = node.solvername
+        elif node.bl_idname == 'MVNNodeType':
+            special_params.append(mvntemplate(node))
+        elif string == 0:
+            raise OSError
+            pass
+        if node.bl_idname != 'SolverNodeType':
+            if node.bl_idname != 'DataNodeType':
+                string = layer_template(node, tops, bottoms, special_params)
+                dstring = string
+            ################################# Recalculate bottoms and tops for ordering
+            bottoms, tops = getbottomsandtops(node, orderpass=1)  # when orderpass = 1, we ignore ReLu nodes
+            #####################################
+            v = Vertex()
+            v.string = string
+            v.dstring = dstring
+            v.bottoms = bottoms
+            v.tops = tops
+            graph.append(v)
+
+    strings, dstrings = reorder(graph)
+    solution = ''.join(strings)
+    dsolution = ''.join(dstrings)
+
+    os.chdir(configpath)
+    ttfile = open('%s_train_test.prototxt' % solvername, mode='w')
+    ttfile.write(solution)
+    ttfile.close()
+    depfile = open('%s_deploy.prototxt' % solvername, mode='w')
+    depfile.write(dsolution)
+    depfile.close()
+    solvefile = open('%s_solver.prototxt' % solvername, mode='w')
+    solvefile.write(solverstring)
+    solvefile.close()
+    scriptfile = open('train_%s.sh' % solvername, mode='w')
+    scriptfile.write(scriptstring)
+    scriptfile.close()
+    print ('Finished solving tree')
+    non = (solution + '\nlayer {\n' + 'type: "Solver"\n' + solverstring + '\n}\n').split('\n')
+    return [[i + '\n' for i in non], Isize]
+
+
 class Solve(bpy.types.Operator):
     """Generate Caffe solver"""  # blender will use this as a tooltip for menu items and buttons.
     bl_idname = "nodes.make_solver"  # unique identifier for buttons and menu items to reference.
@@ -558,157 +733,7 @@ class Solve(bpy.types.Operator):
     bl_options = {'REGISTER'}  # enable undo for the operator.
 
     def execute(self, context):  # execute() is called by blender when running the operator.
-        graph = []
-        for space in bpy.context.area.spaces:
-            if space.type == 'NODE_EDITOR':
-                tree = space.edit_tree
-        bpy.ops.node.select_all()
-        if len(context.selected_nodes) == 0:
-            bpy.ops.node.select_all()
-        ########################################### Main loop
-        for node in context.selected_nodes:
-            nname = node.name
-            string = ''
-            bottoms, tops = getbottomsandtops(node)
-            special_params = []
-
-            ###########################
-            if node.bl_idname == 'DataNodeType':
-                transform_param = transform_param_template(node)
-                node.n_type = node.db_type
-
-                if node.db_type in ('LMDB', 'LEVELDB'):
-                    train_params = [data_param_template(node, node.train_path, node.train_batch_size)]
-                    test_params = [data_param_template(node, node.test_path, node.test_batch_size)]
-                    node.n_type = 'Data'
-                    train_params.append(transform_param)
-                    test_params.append(transform_param)
-                elif node.db_type == 'ImageData':
-                    train_params = [image_data_param_template(node, node.train_data, node.train_batch_size)]
-                    test_params = [image_data_param_template(node, node.test_data, node.test_batch_size)]
-                    train_params.append(transform_param)
-                    test_params.append(transform_param)
-                elif node.db_type == 'HDF5Data':
-                    train_params = [hdf5_data_template(node, node.train_data, node.train_batch_size)]
-                    test_params = [hdf5_data_template(node, node.test_data, node.test_batch_size)]
-                origin = node.include_in
-                node.include_in = "TRAIN"
-                train_string = layer_template(node, tops, bottoms, train_params)
-                node.include_in = "TEST"
-                test_string = layer_template(node, tops, bottoms, test_params)
-                node.include_in = origin
-                if node.include_in == 'TRAIN':
-                    string = train_string
-                elif node.include_in == 'TEST':
-                    string = test_string
-                else:
-                    string = train_string + test_string
-
-                #TODO: Finish dstring
-                dstring = ''
-            elif node.bl_idname == 'PoolNodeType':
-                special_params.append(pool_template(node))
-            elif node.bl_idname == 'EltwiseNodeType':
-                special_params.append(eltwisetemplate(node))
-            elif node.bl_idname == 'ExpNodeType':
-                special_params.append(exptemplate(node))
-            elif node.bl_idname == 'ConvNodeType':
-                special_params.append(conv_template(node))
-            elif node.bl_idname == 'DeConvNodeType':
-                special_params.append(conv_template(node))
-            elif node.bl_idname == 'FCNodeType':
-                special_params.append(FC_template(node))
-            elif node.bl_idname == 'FlattenNodeType':
-                dstring = string
-            elif node.bl_idname == 'SilenceNodeType':
-                dstring = string
-            elif node.bl_idname == 'LRNNodeType':
-                special_params.append(LRNtemplate(node))
-            elif node.bl_idname == 'AcNodeType':
-                node.type = node.mode
-            elif node.bl_idname == 'ReluNodeType':
-                special_params.append(Relutemplate(node))
-            elif node.bl_idname == 'PReluNodeType':
-                special_params.append(PReLU_template(node))
-                dstring = string
-            elif node.bl_idname == 'DropoutNodeType':
-                special_params.append(dropouttemplate(node))
-            elif node.bl_idname == 'SMLossNodeType':
-                special_params.append(loss_weight_template(node.w))
-                dstring = ''
-            elif node.bl_idname == 'SCELossNodeType':
-                special_params.append(loss_weight_template(node.w))
-                dstring = ''
-            elif node.bl_idname == 'EULossNodeType':
-                special_params.append(loss_weight_template(node.w))
-                dstring = ''
-            elif node.bl_idname == 'ConcatNodeType':
-                special_params.append(Concattemplate(node))
-            elif node.bl_idname == 'AccuracyNodeType':
-                dstring = ''
-            elif node.bl_idname == 'ArgMaxNodeType':
-                special_params.append(argmaxtemplate(node))
-                dstring = string
-            elif node.bl_idname == 'HDF5OutputNodeType':
-                special_params.append(hdf5outputtemplate(node))
-                dstring = ''
-            elif node.bl_idname == 'LogNodeType':
-                special_params.append(logtemplate(node))
-                dstring = string;
-            elif node.bl_idname == 'PowerNodeType':
-                special_params.append(powertemplate(node))
-                dstring = string;
-            elif node.bl_idname == 'ReductionNodeType':
-                special_params.append(reductiontemplate(node))
-                dstring = string;
-            elif node.bl_idname == 'SliceNodeType':
-                special_params.append(slicetemplate(node))
-            elif node.bl_idname == 'NodeReroute':
-                string = ''
-                dstring = ''
-            elif node.bl_idname == 'SolverNodeType':
-                solverstring = solver_template(node)
-                scriptstring = scripttemplate(node.caffe_exec, node.config_path, node.solvername, node.gpus,
-                                              solver=node.solver_mode)
-                configpath = node.config_path
-                solvername = node.solvername
-            elif node.bl_idname == 'MVNNodeType':
-                special_params.append(mvntemplate(node))
-            elif string == 0:
-                raise OSError
-                pass
-            if node.bl_idname != 'SolverNodeType':
-                if node.bl_idname != 'DataNodeType':
-                    string = layer_template(node, tops, bottoms, special_params)
-                    dstring = string
-                ################################# Recalculate bottoms and tops for ordering
-                bottoms, tops = getbottomsandtops(node, orderpass=1)
-                #####################################
-                v = Vertex()
-                v.string = string
-                v.dstring = dstring
-                v.bottoms = bottoms
-                v.tops = tops
-                graph.append(v)
-
-        strings, dstrings = reorder(graph)
-        solution = ''.join(strings)
-        dsolution = ''.join(dstrings)
-
-        os.chdir(configpath)
-        ttfile = open('%s_train_test.prototxt' % solvername, mode='w')
-        ttfile.write(solution)
-        ttfile.close()
-        depfile = open('%s_deploy.prototxt' % solvername, mode='w')
-        depfile.write(dsolution)
-        depfile.close()
-        solvefile = open('%s_solver.prototxt' % solvername, mode='w')
-        solvefile.write(solverstring)
-        solvefile.close()
-        scriptfile = open('train_%s.sh' % solvername, mode='w')
-        scriptfile.write(scriptstring)
-        scriptfile.close()
-        print ('Finished solving tree')
+        SolveFunction(context, operatorself=self)
         return {'FINISHED'}  # this lets blender know the operator finished successfully.
 
 

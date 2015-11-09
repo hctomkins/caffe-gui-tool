@@ -2,8 +2,9 @@ bl_info = {
     "name": "Caffe Nodes",
     "category": "Object",
 }
-import bpy
 import subprocess
+
+import bpy
 from bpy.types import NodeTree, Node, NodeSocket
 
 
@@ -26,7 +27,7 @@ def calcsize(self, context, axis='x'):
     reversals = []
     passes = []
     while 1 == 1:
-        if node.bl_idname in ["ConvNodeType","PoolNodeType","DeConvNodeType"]:
+        if node.bl_idname in ["ConvNodeType", "PoolNodeType", "DeConvNodeType"]:
             if node.square_kernel:
                 kernelsizes.extend([node.kernel_size])
             elif axis == 'x':
@@ -110,7 +111,7 @@ def calcsize(self, context, axis='x'):
                     else:
                         x = fcsizes[node]
             break
-        elif node.bl_idname not in ["DataNodeType","FCNodeType","DeConvNodeType","ConvNodeType","PoolNodeType"]:
+        elif node.bl_idname not in ["DataNodeType", "FCNodeType", "DeConvNodeType", "ConvNodeType", "PoolNodeType"]:
             kernelsizes.extend([0])
             strides.extend([0])
             paddings.extend([0])
@@ -353,9 +354,9 @@ class DataNode(Node, CaffeTreeNode):
         ("HDF5Data", "HDF5Data", "HDF5 Data")
     ]
     Phases = [
-        ("TRAINANDTEST","TRAINANDTEST","Train and Test"),
-        ("TRAIN","TRAIN","Train"),
-        ("TEST","TEST","Test")
+        ("TRAINANDTEST", "TRAINANDTEST", "Train and Test"),
+        ("TRAIN", "TRAIN", "Train"),
+        ("TEST", "TEST", "Test")
     ]
     # === Custom Properties ===
 
@@ -392,7 +393,7 @@ class DataNode(Node, CaffeTreeNode):
     )
 
     # Transformation params
-    #include_in = bpy.props.EnumProperty(name="Include in", description="Phases to include in",items=Phases,default='TRAINANDTEST')
+    # include_in = bpy.props.EnumProperty(name="Include in", description="Phases to include in",items=Phases,default='TRAINANDTEST')
     scale = bpy.props.FloatProperty(default=1.0, min=0)
     mirror = bpy.props.BoolProperty(name='Random Mirror', default=False)
     use_mean_file = bpy.props.BoolProperty(name='Use mean file', default=False)
@@ -580,20 +581,17 @@ class PoolNode(Node, CaffeTreeNode):
         except IndexError:
             pass
 
-
         if self.square_padding:
             layout.prop(self, "pad")
         else:
             layout.prop(self, "pad_h")
             layout.prop(self, "pad_w")
 
-
         if self.square_kernel:
             layout.prop(self, "kernel_size")
         else:
             layout.prop(self, "kernel_h")
             layout.prop(self, "kernel_w")
-
 
         if self.square_stride:
             layout.prop(self, "stride")
@@ -783,7 +781,7 @@ class ConvNode(Node, CaffeTreeNode):
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
-        #TODO: Finish calcsize
+        # TODO: Finish calcsize
         try:
             if calcsize(self, context, axis='x') != calcsize(self, context, axis='y'):
                 layout.label("image x,y output is %s,%s pixels" %
@@ -878,7 +876,7 @@ class DeConvNode(Node, CaffeTreeNode):
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
-        #TODO: Finish calcsize
+        # TODO: Finish calcsize
         try:
             if calcsize(self, context, axis='x') != calcsize(self, context, axis='y'):
                 layout.label("image x,y output is %s,%s pixels" %
@@ -939,7 +937,7 @@ class FCNode(Node, CaffeTreeNode):
     bias_term = bpy.props.BoolProperty(name='Include Bias term', default=True)
     weight_filler = bpy.props.PointerProperty(type=filler_p_g)
     bias_filler = bpy.props.PointerProperty(type=filler_p_g)
-    specax =  bpy.props.BoolProperty(name="Specify Axis",default=0)
+    specax = bpy.props.BoolProperty(name="Specify Axis", default=0)
     axis = bpy.props.IntProperty(name="Starting axis", default=1)
 
     # === Optional Functions ===
@@ -996,7 +994,6 @@ class FlattenNode(Node, CaffeTreeNode):
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
         self.outputs.new('OutputSocketType', "Flat output")
-
 
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
@@ -1069,7 +1066,6 @@ class LRNNode(Node, CaffeTreeNode):
         self.inputs.new('ImageSocketType', "Input image")
         self.outputs.new('OutputSocketType', "Normalized output")
 
-
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
         print("Copying from node ", node)
@@ -1109,7 +1105,6 @@ class ActivationNode(Node, CaffeTreeNode):
         self.inputs.new('NAFlatSocketType', "Linear input")
         self.outputs.new('OutputSocketType', "Non Linear output")
 
-
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
         print("Copying from node ", node)
@@ -1143,13 +1138,12 @@ class ReLuNode(Node, CaffeTreeNode):
 
     # === Custom Properties ===
     negative_slope = bpy.props.FloatProperty(default=0)
-    negslope = bpy.props.BoolProperty(default=0,name='Negative Slope')
+    negslope = bpy.props.BoolProperty(default=0, name='Negative Slope')
 
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input image")
         self.outputs.new('InPlaceOutputSocketType', "Rectified output")
-
 
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
@@ -1161,10 +1155,10 @@ class ReLuNode(Node, CaffeTreeNode):
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
-        layout.prop(self,"negslope")
+        layout.prop(self, "negslope")
         if self.negslope:
             layout.prop(self, "negative_slope")
-        #layout.prop(self, "engine")
+        # layout.prop(self, "engine")
         self.draw_extra_params(context, layout)
 
 
@@ -1225,7 +1219,6 @@ class SMLossNode(Node, CaffeTreeNode):
         self.inputs.new('LabelSocketType', "Input Label")
         self.outputs.new('OutputSocketType', "Loss output")
 
-
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
         print("Copying from node ", node)
@@ -1261,7 +1254,6 @@ class SCELossNode(Node, CaffeTreeNode):
         self.inputs.new('NAFlatSocketType', "Input values")
         self.inputs.new('AFlatSocketType', "Input values 2")
         self.outputs.new('OutputSocketType', "Loss output")
-
 
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
@@ -1299,7 +1291,6 @@ class EULossNode(Node, CaffeTreeNode):
         self.inputs.new('AFlatSocketType', "Input values 2")
         self.outputs.new('OutputSocketType', "Loss output")
 
-
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
         print("Copying from node ", node)
@@ -1334,7 +1325,6 @@ class DropoutNode(Node, CaffeTreeNode):
     def init(self, context):
         self.inputs.new('NAFlatSocketType', "Input image")
         self.outputs.new('InPlaceOutputSocketType', "Output image")
-
 
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
@@ -1380,7 +1370,6 @@ class ConcatNode(Node, CaffeTreeNode):
         self.inputs.new('ImageSocketType', "Input2")
         self.outputs.new('OutputSocketType', "Output image")
 
-
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
         print("Copying from node ", node)
@@ -1419,7 +1408,6 @@ class AccuracyNode(Node, CaffeTreeNode):
 
         self.include_in = "TEST"
 
-
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
         print("Copying from node ", node)
@@ -1457,7 +1445,6 @@ class ArgMaxNode(Node, CaffeTreeNode):
     def init(self, context):
         self.inputs.new('LossSocketType', "Input loss")
         self.outputs.new('OutputSocketType', "Output Arg Max")
-
 
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
@@ -1499,7 +1486,6 @@ class HDF5OutputNode(Node, CaffeTreeNode):
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input Image")
 
-
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
         print("Copying from node ", node)
@@ -1534,7 +1520,6 @@ class LogNode(Node, CaffeTreeNode):
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input data")
         self.outputs.new('OutputSocketType', "Output data")
-
 
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
@@ -1573,7 +1558,6 @@ class PowerNode(Node, CaffeTreeNode):
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input data")
         self.outputs.new('OutputSocketType', "Output data")
-
 
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
@@ -1618,7 +1602,6 @@ class ReductionNode(Node, CaffeTreeNode):
     def init(self, context):
         self.inputs.new('ImageSocketType', "Input data")
         self.outputs.new('OutputSocketType', "Output data")
-
 
     # Copy function to initialize a copied node from an existing one.
     def copy(self, node):
@@ -1697,20 +1680,20 @@ class SliceNode(Node, CaffeTreeNode):
 
 
 # // Return the current learning rate. The currently implemented learning rate
-#// policies are as follows:
-#//    - fixed: always return base_lr.
-#//    - step: return base_lr * gamma ^ (floor(iter / step))
-#//    - exp: return base_lr * gamma ^ iter
-#//    - inv: return base_lr * (1 + gamma * iter) ^ (- power)
-#//    - multistep: similar to step but it allows non uniform steps defined by
-#//      stepvalue
-#//    - poly: the effective learning rate follows a polynomial decay, to be
-#//      zero by the max_iter. return base_lr (1 - iter/max_iter) ^ (power)
-#//    - sigmoid: the effective learning rate follows a sigmod decay
-#//      return base_lr ( 1/(1 + exp(-gamma * (iter - stepsize))))
-#//
-#// where base_lr, max_iter, gamma, step, stepvalue and power are defined
-#// in the solver parameter protocol buffer, and iter is the current iteration.
+# // policies are as follows:
+# //    - fixed: always return base_lr.
+# //    - step: return base_lr * gamma ^ (floor(iter / step))
+# //    - exp: return base_lr * gamma ^ iter
+# //    - inv: return base_lr * (1 + gamma * iter) ^ (- power)
+# //    - multistep: similar to step but it allows non uniform steps defined by
+# //      stepvalue
+# //    - poly: the effective learning rate follows a polynomial decay, to be
+# //      zero by the max_iter. return base_lr (1 - iter/max_iter) ^ (power)
+# //    - sigmoid: the effective learning rate follows a sigmod decay
+# //      return base_lr ( 1/(1 + exp(-gamma * (iter - stepsize))))
+# //
+# // where base_lr, max_iter, gamma, step, stepvalue and power are defined
+# // in the solver parameter protocol buffer, and iter is the current iteration.
 
 class SolverNode(Node, CaffeTreeNode):
     # === Basics ===
@@ -1731,7 +1714,7 @@ class SolverNode(Node, CaffeTreeNode):
                    ("poly", "poly", "Polinomial"),
                    ("sigmoid", "sigmoid", "Sigmoid")]
 
-    regularization_types = [("NONE","NONE","NONE"),("L1", "L1", "L1"), ("L2", "L2", "L2")]
+    regularization_types = [("NONE", "NONE", "NONE"), ("L1", "L1", "L1"), ("L2", "L2", "L2")]
 
     gputoggles = []
     gpunum = getgpus()
@@ -1776,10 +1759,10 @@ class SolverNode(Node, CaffeTreeNode):
 
     stepsize = bpy.props.IntProperty(name='Step size', default=5000, min=1)
 
-    #TODO: Finish stepvalue and multistep
-    #stepvalue
+    # TODO: Finish stepvalue and multistep
+    # stepvalue
 
-    #TODO: Maybe add clip gradients
+    # TODO: Maybe add clip gradients
 
     snapshot = bpy.props.IntProperty(name='Snapshot Interval', default=0, min=0,
                                      description="The snapshot interval. 0 for no snapshot")
@@ -1941,7 +1924,8 @@ class SolverNode(Node, CaffeTreeNode):
         layout.prop(self, "config_path")
         layout.prop(self, "caffe_exec")
 
-#        layout.prop(self, "display")
+
+# layout.prop(self, "display")
 #        layout.prop(self, "display")
 #        
 #        
@@ -1977,12 +1961,14 @@ class SolverNode(Node, CaffeTreeNode):
 import nodeitems_utils
 from nodeitems_utils import NodeCategory, NodeItem
 
+
 # our own base class with an appropriate poll function,
 # so the categories only show up in our own tree type
 class CaffeNodeCategory(NodeCategory):
     @classmethod
     def poll(cls, context):
         return context.space_data.tree_type == 'CaffeNodeTree'
+
 
 # all categories in a list
 node_categories = [
