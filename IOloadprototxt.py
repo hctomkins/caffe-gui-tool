@@ -2,7 +2,7 @@ __author__ = 'H'
 
 import os
 import random
-
+from .CGTArrangeHelper import ArrangeFunction
 from .parse import search as findfirstraw
 import bpy
 
@@ -390,7 +390,12 @@ class Load(bpy.types.Operator):
         wholefile = readprototxt(bpy.context.scene['traintest'])
         solve = readprototxt(bpy.context.scene['solver'])
         prototxt = wholefile + ['\nlayer {\n'] + ['type: "Solver"\n'] + solve + ['\n}\n']
-        LoadFunction(prototxt, y, x)
+        prevtrees = bpy.data.node_groups.items()
+        LoadFunction(prototxt, y, x,layout=False)
+        newtrees = bpy.data.node_groups.items()
+        tree = list(set(newtrees) - set(prevtrees))[0][1]
+        tree.name = 'Loaded'
+        ArrangeFunction(context, treename=tree.name)
 
         return {'FINISHED'}  # this lets blender know the operator finished successfully.
 
