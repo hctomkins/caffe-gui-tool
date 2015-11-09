@@ -1,5 +1,4 @@
-#Caffe Gui Tool
-==============
+# Caffe Gui Tool
 This a node based tool for creating caffe networks. It works inside the graphics application 'blender' as a plugin. The reason for this is blender's highly stable, and universally compatible node editor.
 ## Important
 
