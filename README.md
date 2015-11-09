@@ -3,7 +3,7 @@ This a node based tool for creating caffe networks. It works inside the graphics
 ## Important
 
 * The latest commits add a huge number of features, and bundle the application into one single extension for blender. You will need to disable/remove all the old CGT addons, and then install the latest version if you have not already done so. You only have to do this once.
-* These Commits also MASSIVELY change how the addon is used. No more spacebar --> create solution. Make sure you read the[**wiki**](http://bit.ly/1HCES6r)!
+* These Commits also MASSIVELY change how the addon is used. No more spacebar --> create solution. Make sure you read the [**Wiki**](http://bit.ly/1HCES6r)!
 On the plus side - CGT now has .prototxt import features, and asyncronous network training/plotting. Everything has also been hugely refactored for clarity.
 * Huge changes such as the recent commits mean bugs will slip through. Please feel free to report any in the issues manager and I will try and patch them same-day.
 
