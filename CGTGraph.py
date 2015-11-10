@@ -8,7 +8,7 @@ import sys
 from subprocess import PIPE, Popen
 from threading import Thread
 
-from .parse import search as findfirstraw
+from .IOparse import search as findfirstraw
 import bpy
 from queue import Queue, Empty
 from .IOwriteprototxt import SolveFunction

@@ -237,26 +237,6 @@ def ArrangeFunction(context, treename=False):
             datacounter += 1
 
 
-class ArrangeNodes(bpy.types.Operator):
-    'Automatically layout the selected nodes in a linear and non-overlapping fashion.'
-    bl_idname = 'nodes.layout'
-    bl_label = 'Arrange Nodes'
-    bl_options = {'REGISTER', 'UNDO'}
-
-    @classmethod
-    def poll(cls, context):
-        valid = False
-        if context.space_data:
-            if context.space_data.node_tree:
-                if context.space_data.node_tree.nodes:
-                    valid = True
-        return valid
-
-    def execute(self, context):
-        ArrangeFunction(context)
-        return {'FINISHED'}
-
-
 def register():
     # props
     bpy.types.Scene.NWStartAlign = bpy.props.BoolProperty(
@@ -283,8 +263,6 @@ def register():
         default='ignore',
         description="How to handle Frame nodes")
 
-    bpy.utils.register_class(ArrangeNodes)
-
 
 def unregister():
     # props
@@ -293,5 +271,3 @@ def unregister():
     del bpy.types.Scene.NWSpacing
     del bpy.types.Scene.NWDelReroutes
     del bpy.types.Scene.NWFrameHandling
-
-    bpy.utils.unregister_class(ArrangeNodes)

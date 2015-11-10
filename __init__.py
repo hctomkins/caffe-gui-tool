@@ -10,7 +10,6 @@ bl_info = {
 # # if it's there, reload everything
 if "bpy" in locals():
     import imp
-
     imp.reload(IOwriteprototxt)
     imp.reload(IOcexp)
     imp.reload(CGTNodes)
@@ -20,7 +19,6 @@ if "bpy" in locals():
     print("Reloaded multifiles")
 else:
     from . import IOwriteprototxt, CGTNodes, IOloadprototxt, CGTArrangeHelper, CGTGraph, IOcexp
-
     print("Imported multifiles")
 
 import bpy

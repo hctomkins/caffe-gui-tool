@@ -3,7 +3,7 @@ __author__ = 'H'
 import os
 import random
 from .CGTArrangeHelper import ArrangeFunction
-from .parse import search as findfirstraw
+from .IOparse import search as findfirstraw
 import bpy
 
 
@@ -238,7 +238,7 @@ def getlayers(prototxt):
     return layers
 
 
-def LoadFunction(prototxt, y, x, nh=False, nw=False, h=False, w=False, layout=True):
+def LoadFunction(prototxt, y, x, nh=False, nw=False, h=False, w=False):
     nodetypes = {'Pooling': 'PoolNodeType', 'Eltwise': 'EltwiseNodeType', 'Exp': 'ExpNodeType',
                  'Convolution': 'ConvNodeType', 'Deconvolution': 'DeConvNodeType', 'InnerProduct': 'FCNodeType',
                  'Flatten': 'FlattenNodeType', 'Silence': 'SilenceNodeType', 'LRN': 'LRNNodeType',
@@ -368,9 +368,6 @@ def LoadFunction(prototxt, y, x, nh=False, nw=False, h=False, w=False, layout=Tr
                     endpos = textlayer.bottoms.index(lastlayer.tops[0])
                     startpos = 0
         link(startnode, endnode, startpos, endpos, links)
-    if layout:
-        print('Began Arranging nodes - This takes ~2min for googlenet on an i7')
-        bpy.ops.nodes.layout('EXEC_DEFAULT')
 
 
 class Load(bpy.types.Operator):
@@ -391,7 +388,7 @@ class Load(bpy.types.Operator):
         solve = readprototxt(bpy.context.scene['solver'])
         prototxt = wholefile + ['\nlayer {\n'] + ['type: "Solver"\n'] + solve + ['\n}\n']
         prevtrees = bpy.data.node_groups.items()
-        LoadFunction(prototxt, y, x,layout=False)
+        LoadFunction(prototxt, y, x)
         newtrees = bpy.data.node_groups.items()
         tree = list(set(newtrees) - set(prevtrees))[0][1]
         tree.name = 'Loaded'
