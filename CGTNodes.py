@@ -1790,11 +1790,11 @@ class SolverNode(Node, CaffeTreeNode):
 
     solver_types = [("NESTEROV", "NESTEROV", "Nesterovs Accelerated Gradient"),
                     ("ADAGRAD", "ADAGRAD", "Adaptive gradient descent"),
-                    ("SGD", "SGD", "Stochastic Gradient Descent")]
+                    ("SGD", "SGD", "Stochastic Gradient Descent"),("RMSProp", "RMSProp", "RMSProp")]
     solver_type = bpy.props.EnumProperty(name='Solver type', items=solver_types, default='SGD')
 
     delta = bpy.props.FloatProperty(name='Delta', default=1e-8, min=0, description="Numerical stability for AdaGrad")
-
+    RMSdecay = bpy.props.FloatProperty(name='RMS decay', default=.97, min=0, description="Numerical stability for RMSprop")
     debug_info = bpy.props.BoolProperty(name='Debug info', default=False)
 
     snapshot_after_train = bpy.props.BoolProperty(name='Snapshot after train', default=True,
@@ -1918,7 +1918,8 @@ class SolverNode(Node, CaffeTreeNode):
 
         if self.solver_type == 'ADAGRAD':
             layout.prop(self, "delta")
-
+        if self.solver_type == 'RMSProp':
+            layout.prop(self, "RMSdecay")
         layout.prop(self, "debug_info")
 
         layout.prop(self, "config_path")

@@ -314,6 +314,8 @@ def solver_template(node):
     delta_string = ''
     if node.solver_type == 'ADAGRAD':
         delta_string = 'delta %f' % node.delta
+    if node.solver_type == 'RMSProp':
+        delta_string = 'rms_decay: %f' % node.RMSdecay
     if node.regularization_type != 'NONE':
         string = ''' \
 regularization_type: "%s"
