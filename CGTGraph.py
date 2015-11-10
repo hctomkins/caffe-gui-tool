@@ -37,10 +37,14 @@ def format_filename(s):
 
 
 def get_loss(line):
+    nameline = line[line.index(']'):]
+    nameline = nameline[nameline.index(':')+2:]
+    nameline = nameline[:nameline.index('=')-1]
     line = line[line.index('=') + 2:]
-    line = line[:line.index('(') - 1]
+    if '(' in line:
+        line = line[:line.index('(') - 1]
     loss = float(line)
-    return loss
+    return loss,nameline
 
 
 class TrainPlot(bpy.types.Operator):
@@ -57,7 +61,7 @@ class TrainPlot(bpy.types.Operator):
         if scn["donetraining"]:
             scn["donetraining"] = False
             wm = context.window_manager
-            self._timer = wm.event_timer_add(0.005, context.window)
+            self._timer = wm.event_timer_add(0.001, context.window)
             wm.modal_handler_add(self)
             self.train_graph = []
             self.test_graph = []
@@ -103,7 +107,7 @@ class TrainPlot(bpy.types.Operator):
 
             ## Set up operater parameters
             self.iteration = 0
-            self.protodata = SolveFunction(context)
+            self.protodata,bashpath = SolveFunction(context)
             dumpdata = [self.train_graph, self.test_graph, self.protodata, self.comment]
             currenttime = datetime.datetime.now()
             self.filename = format_filename(self.filecomment) + currenttime.strftime("_%Y.%m.%d_%H.%M_") + '.cexp'
@@ -114,7 +118,7 @@ class TrainPlot(bpy.types.Operator):
             self.datacube["originaltree"] = ''
             ## Do the training
             context.user_preferences.edit.keyframe_new_interpolation_type = 'LINEAR'
-            self.p = Popen(['/home/h/PycharmProjects/Overhaul/Models/train_big1.sh'], stderr=PIPE, bufsize=1,
+            self.p = Popen([bashpath], stderr=PIPE, bufsize=1,
                            close_fds=ON_POSIX, shell=True)
             self.q = Queue()
             self.t = Thread(target=enqueue_output, args=(self.p.stderr, self.q))
@@ -136,19 +140,25 @@ class TrainPlot(bpy.types.Operator):
                 print (output)
                 if 'Iteration' in output:
                     self.iteration = findfirst('Iteration {:g},', output)
-                if 'output' in output and 'loss' in output:
-                    loss = get_loss(output)
-                    if 'Test' in output:
-                        self.datacube["test"] = loss
+                if 'output' in output:
+                    try:
+                        loss,name = get_loss(output)
+                        if len(name)>55:
+                            name = name[int(55-len(name)/2):len(name)-(int(55-len(name)/2))]
+                        Fail = False
+                    except ValueError:
+                        Fail = True
+                    if 'Test' in output and not Fail:
+                        self.datacube[name+"test"] = loss
                         self.test_graph.append([loss, self.iteration])
                         context.user_preferences.edit.keyframe_new_interpolation_type = 'LINEAR'
-                        self.datacube.keyframe_insert(data_path='["test"]', frame=(self.iteration))
-                    elif 'Train' in output:
-                        self.datacube["train"] = loss
+                        self.datacube.keyframe_insert(data_path='["%stest"]'%name, frame=(self.iteration))
+                    elif 'Train' in output and not Fail:
+                        self.datacube[name+"train"] = loss
                         self.train_graph.append([loss, self.iteration])
                         context.user_preferences.edit.keyframe_new_interpolation_type = 'LINEAR'
-                        self.datacube.keyframe_insert(data_path='["train"]', frame=(self.iteration))
-                    else:
+                        self.datacube.keyframe_insert(data_path='["%strain"]'%name, frame=(self.iteration))
+                    elif not Fail:
                         self.report({'ERROR'}, "WTF just happened")
                         return {'FINISHED'}
                     dumpdata = [self.train_graph, self.test_graph, self.protodata, self.comment]
@@ -164,6 +174,8 @@ class TrainPlot(bpy.types.Operator):
                 os.system("pkill caffe")
             if self.p.poll():
                 print ('Finished')
+                print('Note - If your training stopped early run the train script directly from terminal as')
+                print('there is likely an error with your network')
             bpy.ops.object.select_all()
             if len(context.selected_objects) == 0:
                 bpy.ops.object.select_all()

@@ -485,7 +485,7 @@ def multiplemin(iterable, key):
     if smalleriterable:
         nextmin = min(smalleriterable, key=key)
         while key(nextmin) == key(firstmin):
-            print (nextmin.string)
+            #print (nextmin.string)
             toreturn.append(nextmin)
             smalleriterable = [i for i in iterable if i not in toreturn]
             if smalleriterable:
@@ -725,7 +725,7 @@ def SolveFunction(context, operatorself=None):
     scriptfile.close()
     print ('Finished solving tree')
     non = (solution + '\nlayer {\n' + 'type: "Solver"\n' + solverstring + '\n}\n').split('\n')
-    return [[i + '\n' for i in non], Isize]
+    return [[i + '\n' for i in non], Isize], configpath + 'train_%s.sh' % solvername
 
 
 class Solve(bpy.types.Operator):
