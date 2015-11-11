@@ -3,7 +3,7 @@ This a node based tool for creating caffe networks. It works inside the graphics
 
 ## Important (Current users)
 * The latest commits add a huge number of features. Make sure you read the [**Wiki**](http://bit.ly/1HCES6r)! If you haven't already done so, you'll need to reinstall the addon once following the installation instructions in the wiki. This allows you to update with just a git pull. With huge features do sometimes come bugs. Drop any in the issues tracker and we will try and fix same day.
-* 
+
 ## [**Installation and usage instructions on the wiki**](http://bit.ly/1HCES6r)
 
 ## Useful features:
