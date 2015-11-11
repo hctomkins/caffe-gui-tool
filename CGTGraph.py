@@ -161,6 +161,10 @@ class TrainPlot(bpy.types.Operator):
                     elif not Fail:
                         self.report({'ERROR'}, "WTF just happened")
                         return {'FINISHED'}
+                    try:
+                        bpy.ops.graph.select_all_toggle()
+                    except RuntimeError:
+                        pass
                     dumpdata = [self.train_graph, self.test_graph, self.protodata, self.comment]
                     pickle.dump(dumpdata, open(os.path.join(self.tempdata, self.filename), 'wb'), protocol=2)
                     with redirect_stdout(stdout):
