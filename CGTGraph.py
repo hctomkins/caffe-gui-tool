@@ -7,7 +7,9 @@ import string
 import sys
 from subprocess import PIPE, Popen
 from threading import Thread
-
+from contextlib import redirect_stdout
+import io
+stdout = io.StringIO()
 from .IOparse import search as findfirstraw
 import bpy
 from queue import Queue, Empty
@@ -61,7 +63,7 @@ class TrainPlot(bpy.types.Operator):
         if scn["donetraining"]:
             scn["donetraining"] = False
             wm = context.window_manager
-            self._timer = wm.event_timer_add(0.001, context.window)
+            self._timer = wm.event_timer_add(0.01, context.window)
             wm.modal_handler_add(self)
             self.train_graph = []
             self.test_graph = []
@@ -75,8 +77,6 @@ class TrainPlot(bpy.types.Operator):
             for node in context.selected_nodes:
                 if node.bl_idname == 'SolverNodeType':
                     error = False
-                    output_dest = node.config_path
-                    solverfile = 'train_%s.sh' % node.solvername
             if error:
                 self.report({'ERROR'}, "No Solver Node added")
                 return {'FINISHED'}
@@ -163,7 +163,8 @@ class TrainPlot(bpy.types.Operator):
                         return {'FINISHED'}
                     dumpdata = [self.train_graph, self.test_graph, self.protodata, self.comment]
                     pickle.dump(dumpdata, open(os.path.join(self.tempdata, self.filename), 'wb'), protocol=2)
-                    bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
+                    with redirect_stdout(stdout):
+                        bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
                     # ^^^ This is hacky but would have to be replaced by 50 lines of code to be 'proper'
 
         ## Quitting

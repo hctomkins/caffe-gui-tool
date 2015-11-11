@@ -723,9 +723,10 @@ def SolveFunction(context, operatorself=None):
     scriptfile = open('train_%s.sh' % solvername, mode='w')
     scriptfile.write(scriptstring)
     scriptfile.close()
+    os.system("chmod 775 %s" % os.path.join(configpath,'train_%s.sh' % solvername))
     print ('Finished solving tree')
     non = (solution + '\nlayer {\n' + 'type: "Solver"\n' + solverstring + '\n}\n').split('\n')
-    return [[i + '\n' for i in non], Isize], configpath + 'train_%s.sh' % solvername
+    return [[i + '\n' for i in non], Isize], os.path.join(configpath,'train_%s.sh' % solvername)
 
 
 class Solve(bpy.types.Operator):
