@@ -384,6 +384,9 @@ class Load(bpy.types.Operator):
             deploy = False
         if deploy:
             x, y = getsize(deploy)
+        else:
+            x = 0
+            y = 0
         wholefile = readprototxt(bpy.context.scene['traintest'])
         solve = readprototxt(bpy.context.scene['solver'])
         prototxt = wholefile + ['\nlayer {\n'] + ['type: "Solver"\n'] + solve + ['\n}\n']
