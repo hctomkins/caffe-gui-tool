@@ -91,7 +91,7 @@ class TrainPlot(bpy.types.Operator):
             cscene = bpy.context.scene
 
             ## Get scene params
-            if 'tempdata' in cscene:
+            if 'savetempdata' in cscene:
                 self.tempdata = cscene['savetempdata']
             else:
                 self.report({'ERROR'}, "Log Folder not set")

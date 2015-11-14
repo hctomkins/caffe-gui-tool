@@ -630,7 +630,7 @@ def SolveFunction(context, operatorself=None):
             else:
                 string = train_string + test_string
             if node.include_in != "TEST":
-                dstring = deploytemplate(1,node.channels,y,x,node.tops[0])
+                dstring = deploytemplate(1,node.channels,y,x,tops[0])
         elif node.bl_idname == 'PoolNodeType':
             special_params.append(pool_template(node))
         elif node.bl_idname == 'EltwiseNodeType':

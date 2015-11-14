@@ -171,9 +171,12 @@ class textlayerob(object):
         if node.random_seed:
             node.use_random_seed = True
         if self.type == 'Solver':
-            node.solvername = format_filename(findfirst(os.path.sep + '{}' + '_train', chunkstring))
-            if len(node.solvername) > 15:
-                node.solvername = node.solvername[15:]
+            if findfirst(os.path.sep + '{}' + '_train', chunkstring):
+                node.solvername = format_filename(findfirst(os.path.sep + '{}' + '_train', chunkstring))
+                if len(node.solvername) > 15:
+                    node.solvername = node.solvername[15:]
+            else:
+                node.solvername = 'CGTLoaded'
         node.OutMaxVal = findfirst('out_max_val: {:g}\n', chunkstring)  ################
         node.TopK = findfirst('top_k: {:g}\n', chunkstring)  ###################
         node.filename = findfirst('file_name: {}', chunkstring)  #######################

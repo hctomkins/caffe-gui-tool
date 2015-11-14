@@ -80,7 +80,7 @@ class LoadCexp(bpy.types.Operator):
         datacube.select = True
         datacube["originaltree"] = ''
         if 'loadloss' not in cscene or 'loadtree' not in cscene:
-            self.report({'ERROR'}, "Blender bug: Please Double toggle the graph and tree toggles")
+            self.report({'ERROR'}, "Blender bug: Please Double toggle the 'Load Loss graphs' and 'Load Node tree' toggles")
         LoadCexpFunction(context, tempdata, datacube, cscene["loadloss"], cscene["loadtree"])
         return {'FINISHED'}  # this lets blender know the operator finished successfully.
 
