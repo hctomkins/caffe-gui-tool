@@ -354,15 +354,17 @@ snapshot_after_train: %i
     return "\n".join(filter(lambda x: x.strip(), string.splitlines())) + "\n"
 
 
-def deploytemplate(batch, channels, size, datain):
+def deploytemplate(batch, channels, xsize, ysize, datain):
     deploystring = '''\
-name: "Autogen"
+name: 'Autogen'
 input: "%s"
-input_dim: %i
-input_dim: %i
-input_dim: %i
-input_dim: %i
-''' % (datain, batch, channels, size, size)
+input_shape {
+  dim: %i
+  dim: %i
+  dim: %i
+  dim: %i
+}
+''' % (datain, batch, channels, xsize, ysize)
     return deploystring
 
 
@@ -583,7 +585,7 @@ def SolveFunction(context, operatorself=None):
         string = ''
         bottoms, tops = getbottomsandtops(node)
         special_params = []
-
+        deploy = True
         ###########################
         if node.bl_idname == 'DataNodeType':
             transform_param = transform_param_template(node)
@@ -595,14 +597,23 @@ def SolveFunction(context, operatorself=None):
                 node.n_type = 'Data'
                 train_params.append(transform_param)
                 test_params.append(transform_param)
+                y = node.height
+                x = node.width
             elif node.db_type == 'ImageData':
                 train_params = [image_data_param_template(node, node.train_data, node.train_batch_size)]
                 test_params = [image_data_param_template(node, node.test_data, node.test_batch_size)]
                 train_params.append(transform_param)
                 test_params.append(transform_param)
+                y = node.new_height
+                x = node.new_width
             elif node.db_type == 'HDF5Data':
                 train_params = [hdf5_data_template(node, node.train_data, node.train_batch_size)]
                 test_params = [hdf5_data_template(node, node.test_data, node.test_batch_size)]
+                y = node.height
+                x = node.width
+            else:
+                y = node.height
+                x = node.width
             origin = node.include_in
             node.include_in = "TRAIN"
             train_string = layer_template(node, tops, bottoms, train_params)
@@ -615,9 +626,8 @@ def SolveFunction(context, operatorself=None):
                 string = test_string
             else:
                 string = train_string + test_string
-
-            # TODO: Finish dstring
-            dstring = ''
+            if node.include_in != "TEST":
+                dstring = deploytemplate(1,node.channels,y,x,node.tops[0])
         elif node.bl_idname == 'PoolNodeType':
             special_params.append(pool_template(node))
         elif node.bl_idname == 'EltwiseNodeType':
@@ -630,10 +640,6 @@ def SolveFunction(context, operatorself=None):
             special_params.append(conv_template(node))
         elif node.bl_idname == 'FCNodeType':
             special_params.append(FC_template(node))
-        elif node.bl_idname == 'FlattenNodeType':
-            dstring = string
-        elif node.bl_idname == 'SilenceNodeType':
-            dstring = string
         elif node.bl_idname == 'LRNNodeType':
             special_params.append(LRNtemplate(node))
         elif node.bl_idname == 'AcNodeType':
@@ -642,42 +648,31 @@ def SolveFunction(context, operatorself=None):
             special_params.append(Relutemplate(node))
         elif node.bl_idname == 'PReluNodeType':
             special_params.append(PReLU_template(node))
-            dstring = string
         elif node.bl_idname == 'DropoutNodeType':
             special_params.append(dropouttemplate(node))
         elif node.bl_idname == 'SMLossNodeType':
             special_params.append(loss_weight_template(node.w))
-            dstring = ''
+            deploy = False
         elif node.bl_idname == 'SCELossNodeType':
             special_params.append(loss_weight_template(node.w))
-            dstring = ''
+            deploy = False
         elif node.bl_idname == 'EULossNodeType':
             special_params.append(loss_weight_template(node.w))
-            dstring = ''
+            deploy = False
         elif node.bl_idname == 'ConcatNodeType':
             special_params.append(Concattemplate(node))
-        elif node.bl_idname == 'AccuracyNodeType':
-            dstring = ''
         elif node.bl_idname == 'ArgMaxNodeType':
             special_params.append(argmaxtemplate(node))
-            dstring = string
         elif node.bl_idname == 'HDF5OutputNodeType':
             special_params.append(hdf5outputtemplate(node))
-            dstring = ''
         elif node.bl_idname == 'LogNodeType':
             special_params.append(logtemplate(node))
-            dstring = string;
         elif node.bl_idname == 'PowerNodeType':
             special_params.append(powertemplate(node))
-            dstring = string;
         elif node.bl_idname == 'ReductionNodeType':
             special_params.append(reductiontemplate(node))
-            dstring = string;
         elif node.bl_idname == 'SliceNodeType':
             special_params.append(slicetemplate(node))
-        elif node.bl_idname == 'NodeReroute':
-            string = ''
-            dstring = ''
         elif node.bl_idname == 'SolverNodeType':
             solverstring = solver_template(node)
             scriptstring = scripttemplate(node.caffe_exec, node.config_path, node.solvername, node.gpus,
@@ -695,7 +690,10 @@ def SolveFunction(context, operatorself=None):
         if node.bl_idname != 'SolverNodeType':
             if node.bl_idname != 'DataNodeType':
                 string = layer_template(node, tops, bottoms, special_params)
-                dstring = string
+                if deploy:
+                    dstring = string
+                else:
+                    dstring = ''
             ################################# Recalculate bottoms and tops for ordering
             bottoms, tops = getbottomsandtops(node, orderpass=1)  # when orderpass = 1, we ignore ReLu nodes
             #####################################

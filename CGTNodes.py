@@ -410,6 +410,7 @@ class DataNode(Node, CaffeTreeNode):
     new_width = bpy.props.IntProperty(name="New image width", min=0, default=0, soft_max=1000)
     height = bpy.props.IntProperty(name="Image height", min=0, default=0, soft_max=1000)
     width = bpy.props.IntProperty(name="Image width", min=0, default=0, soft_max=1000)
+    channels = bpy.props.IntProperty(name="Image Channels", min=1, default=1, soft_max=5)
     is_color = bpy.props.BoolProperty(name="Is color image", default=True)
     # For Image data + HDF5 data
     shuffle = bpy.props.BoolProperty(name='Shuffle', default=False)
@@ -464,17 +465,19 @@ class DataNode(Node, CaffeTreeNode):
             layout.prop(self, "shuffle")
             layout.prop(self, "new_height")
             layout.prop(self, "new_width")
+            layout.prop(self, "channels")
             layout.prop(self, "is_color")
             layout.prop(self, "rand_skip")
         elif self.db_type == 'HDF5Data':
             layout.prop(self, "shuffle")
             layout.prop(self, "height")
             layout.prop(self, "width")
+            layout.prop(self, "channels")
         else:
             layout.prop(self, "rand_skip")
             layout.prop(self, "height")
             layout.prop(self, "width")
-
+            layout.prop(self, "channels")
     def draw_label(self):
         return "Data Node"
 

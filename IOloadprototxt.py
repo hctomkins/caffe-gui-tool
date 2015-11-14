@@ -168,7 +168,7 @@ class textlayerob(object):
         node.TopK = findfirst('top_k: {:g}\n', chunkstring)  ###################
         node.filename = findfirst('file_name: {}', chunkstring)  #######################
         node.slice_points = findmultiple('slice_point {:g}\n', chunkstring)
-        sp = findfirst('snapshot_prefix: {}\n', chunkstring)
+        sp = findfirst('snapshot_prefix: "{}"\n', chunkstring)
         if sp:
             node.snapshot_prefix = os.path.split(sp)[0] + os.path.sep
         node.size = findfirst('local_size: {:g}\n', chunkstring)
