@@ -88,10 +88,12 @@ class textlayerob(object):
         #################### Many layer specific
         decaymults = findmultiple('decay_mult: {:g}\n', chunkstring)
         lrmults = findmultiple('lr_mult: {:g}\n', chunkstring)
-        if decaymults or lrmults:
+        if decaymults:
             node.extra_params = True
             node.weight_params.decay_mult = decaymults[0]
             node.bias_params.decay_mult = decaymults[1]
+        if lrmults:
+            node.extra_params = True
             node.weight_params.lr_mult = lrmults[0]
             node.bias_params.lr_mult = lrmults[1]
         findsetbeforecolon('kernel_size', node, chunkstring, True)
@@ -243,7 +245,7 @@ def LoadFunction(prototxt, y, x, nh=False, nw=False, h=False, w=False):
                  'Convolution': 'ConvNodeType', 'Deconvolution': 'DeConvNodeType', 'InnerProduct': 'FCNodeType',
                  'Flatten': 'FlattenNodeType', 'Silence': 'SilenceNodeType', 'LRN': 'LRNNodeType',
                  'Sigmoid': 'AcNodeType', 'TanH': 'AcNodeType', 'ReLU': 'ReluNodeType', 'PReLU': 'PReluNodeType',
-                 'Dropout': 'DropoutNodeType', 'SoftmaxWithLoss': 'SMLossNodeType',
+                 'Dropout': 'DropoutNodeType', 'SoftmaxWithLoss': 'SMLossNodeType','Softmax': 'SMLossNodeType',
                  'SigmoidCrossEntropyLoss': 'SCELossNodeType', 'EuclideanLoss': 'EULossNodeType',
                  'Concat': 'ConcatNodeType', 'Accuracy': 'AccuracyNodeType',
                  'ArgMax': 'ArgMaxNodeType', 'HDF5Output': 'HDF5OutputNodeType', 'Log': 'LogNodeType',
