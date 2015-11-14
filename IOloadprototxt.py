@@ -5,6 +5,14 @@ import random
 from .CGTArrangeHelper import ArrangeFunction
 from .IOparse import search as findfirstraw
 import bpy
+import string
+
+
+def format_filename(s):
+    valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+    filename = ''.join(c for c in s if c in valid_chars)
+    filename = filename.replace(' ','_') # I don't like spaces in filenames.
+    return filename
 
 
 class fclass(object):
@@ -163,7 +171,9 @@ class textlayerob(object):
         if node.random_seed:
             node.use_random_seed = True
         if self.type == 'Solver':
-            node.solvername = findfirst(os.path.sep + '{}' + '_train', chunkstring)
+            node.solvername = format_filename(findfirst(os.path.sep + '{}' + '_train', chunkstring))
+            if len(node.solvername) > 15:
+                node.solvername = node.solvername[15:]
         node.OutMaxVal = findfirst('out_max_val: {:g}\n', chunkstring)  ################
         node.TopK = findfirst('top_k: {:g}\n', chunkstring)  ###################
         node.filename = findfirst('file_name: {}', chunkstring)  #######################
@@ -240,7 +250,7 @@ def getlayers(prototxt):
     return layers
 
 
-def LoadFunction(prototxt, y, x, nh=False, nw=False, h=False, w=False):
+def LoadFunction(prototxt, y, x, nh=False, nw=False, h=False, w=False,operatorself=None):
     nodetypes = {'Pooling': 'PoolNodeType', 'Eltwise': 'EltwiseNodeType', 'Exp': 'ExpNodeType',
                  'Convolution': 'ConvNodeType', 'Deconvolution': 'DeConvNodeType', 'InnerProduct': 'FCNodeType',
                  'Flatten': 'FlattenNodeType', 'Silence': 'SilenceNodeType', 'LRN': 'LRNNodeType',
@@ -259,6 +269,7 @@ def LoadFunction(prototxt, y, x, nh=False, nw=False, h=False, w=False):
     tree.name = 'Loaded'
     links = tree.links
     textlayers = [i for i in textlayers if i.type != None]
+    Datanode = False
     # make and set up nodes
     for textlayer in textlayers:
         nodesbefore = bpy.data.node_groups[tree.name].nodes.items()
@@ -284,6 +295,7 @@ def LoadFunction(prototxt, y, x, nh=False, nw=False, h=False, w=False):
                     setattr(getattr(node, basicparametername), parametername,
                             getattr(getattr(textlayer.node, basicparametername), parametername))
         if 'Data' in textlayer.type:
+            Datanode = True
             for pos in range(2):
                 node.outputs[pos].output_name = textlayer.tops[pos]
             if nh or nw or h or w:
@@ -371,6 +383,10 @@ def LoadFunction(prototxt, y, x, nh=False, nw=False, h=False, w=False):
                     startpos = 0
         link(startnode, endnode, startpos, endpos, links)
 
+    if not Datanode:
+        if operatorself:
+            operatorself.report({'ERROR'}, "No Data Node in protoxt. Please add data node manually.")
+
 
 class Load(bpy.types.Operator):
     """Load Caffe solver"""
@@ -393,7 +409,7 @@ class Load(bpy.types.Operator):
         solve = readprototxt(bpy.context.scene['solver'])
         prototxt = wholefile + ['\nlayer {\n'] + ['type: "Solver"\n'] + solve + ['\n}\n']
         prevtrees = bpy.data.node_groups.items()
-        LoadFunction(prototxt, y, x)
+        LoadFunction(prototxt, y, x,operatorself=self)
         newtrees = bpy.data.node_groups.items()
         tree = list(set(newtrees) - set(prevtrees))[0][1]
         tree.name = 'Loaded'

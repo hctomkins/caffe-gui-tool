@@ -9,6 +9,7 @@ bl_info = {
 
 import os
 import bpy
+import string
 
 tab = '    '
 tab2 = tab + tab
@@ -573,6 +574,7 @@ def getbottomsandtops(node, orderpass=0):
 
 def SolveFunction(context, operatorself=None):
     graph = []
+    DataNode = False
     for space in bpy.context.area.spaces:
         if space.type == 'NODE_EDITOR':
             tree = space.edit_tree
@@ -588,6 +590,7 @@ def SolveFunction(context, operatorself=None):
         deploy = True
         ###########################
         if node.bl_idname == 'DataNodeType':
+            DataNode = True
             transform_param = transform_param_template(node)
             node.n_type = node.db_type
             Isize = [node.new_height, node.new_width, node.height, node.width]
@@ -703,7 +706,9 @@ def SolveFunction(context, operatorself=None):
             v.bottoms = bottoms
             v.tops = tops
             graph.append(v)
-
+    if not DataNode:
+        operatorself.report({'ERROR'}, "No Data Node in output. Output will be deploy only")
+        Isize = [0,0,0,0]
     strings, dstrings = reorder(graph)
     solution = ''.join(strings)
     dsolution = ''.join(dstrings)
@@ -723,8 +728,8 @@ def SolveFunction(context, operatorself=None):
     scriptfile.close()
     os.system("chmod 775 %s" % os.path.join(configpath,'train_%s.sh' % solvername))
     print ('Finished solving tree')
-    non = (solution + '\nlayer {\n' + 'type: "Solver"\n' + solverstring + '\n}\n').split('\n')
-    return [[i + '\n' for i in non], Isize], os.path.join(configpath,'train_%s.sh' % solvername)
+    protoandsolver = (solution + '\nlayer {\n' + 'type: "Solver"\n' + solverstring + '\n}\n').split('\n')
+    return [[i + '\n' for i in protoandsolver], Isize], os.path.join(configpath,'train_%s.sh' % solvername)
 
 
 class Solve(bpy.types.Operator):
