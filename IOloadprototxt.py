@@ -266,6 +266,9 @@ def LoadFunction(prototxt, y, x, nh=False, nw=False, h=False, w=False,operatorse
                  'MVN': 'MVNNodeType', 'Solver': 'SolverNodeType', 'Data': 'DataNodeType'}
     textlayers = getlayers(prototxt)
     prevtrees = bpy.data.node_groups.items()
+    for tree in prevtrees:
+        if tree[1].name == 'Loaded':
+            bpy.data.node_groups["Loaded"].name = "Loaded(old)"
     bpy.ops.node.new_node_tree(type='CaffeNodeTree', name="NodeTree")
     newtrees = bpy.data.node_groups.items()
     tree = list(set(newtrees) - set(prevtrees))[0][1]

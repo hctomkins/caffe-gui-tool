@@ -31,6 +31,10 @@ def getactivefcurve():
 
 
 def LoadCexpFunction(context, tempdata, datacube, loadloss, loadtree):
+    currenttrees = bpy.data.node_groups.items()
+    for tree in currenttrees:
+        if tree[1].name == os.path.split(tempdata)[1]:
+            bpy.data.node_groups[os.path.split(tempdata)[1]].name = os.path.split(tempdata)[1]+"(old)"
     datalist = pickle.load(open(tempdata, 'rb'))
     train_graph, test_graph, protodata, comment = datalist
     prototxt, Isize = protodata
