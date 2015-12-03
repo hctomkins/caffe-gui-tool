@@ -311,12 +311,16 @@ def solver_template(node):
     random_seed_string = ''
     if node.use_random_seed:
         random_seed_string = 'random_seed: %i' % node.random_seed
-
+    momentumstring = ''
     delta_string = ''
-    if node.solver_type == 'ADAGRAD':
-        delta_string = 'delta %f' % node.delta
+    if node.solver_type not in ['AdaGrad','RMSProp']:
+        momentumstring = 'momentum: %f'%node.momentum
+    if node.solver_type == 'AdaDelta':
+        delta_string = 'delta: %f' % node.delta
     if node.solver_type == 'RMSProp':
         delta_string = 'rms_decay: %f' % node.RMSdecay
+    if node.solver_type == 'Adam':
+        delta_string = 'momentum2: %f'%node.momentum2
     if node.regularization_type != 'NONE':
         string = ''' \
 regularization_type: "%s"
@@ -336,20 +340,20 @@ max_iter: %i
 iter_size: %i
 lr_policy: "%s"
 %s
-momentum: %f
+%s
 weight_decay: %f
 snapshot: %i
 snapshot_prefix: "%s"
 snapshot_diff: %i
 solver_mode: %s
 %s
-solver_type: %s
+type: "%s"
 %s
 debug_info: %i
 snapshot_after_train: %i
 ''' % (net_path, node.test_iter, node.test_interval, node.test_compute_loss, node.test_initialization, node.base_lr,
        node.display, node.average_loss, node.max_iter,
-       node.iter_size, node.lr_policy, lr_string, node.momentum, node.weight_decay,
+       node.iter_size, node.lr_policy, lr_string, momentumstring, node.weight_decay,
        node.snapshot, node.snapshot_prefix + node.solvername, node.snapshot_diff,
        node.solver_mode, random_seed_string, node.solver_type, delta_string, node.debug_info, node.snapshot_after_train)
     return "\n".join(filter(lambda x: x.strip(), string.splitlines())) + "\n"
@@ -661,6 +665,8 @@ def SolveFunction(context, operatorself=None):
             deploy = False
         elif node.bl_idname == 'EULossNodeType':
             special_params.append(loss_weight_template(node.w))
+            deploy = False
+        elif node.bl_idname == 'AccuracyNodeType':
             deploy = False
         elif node.bl_idname == 'ConcatNodeType':
             special_params.append(Concattemplate(node))

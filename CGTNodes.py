@@ -1756,16 +1756,13 @@ class SolverNode(Node, CaffeTreeNode):
     gamma = bpy.props.FloatProperty(name='Gamma', default=0.0001, min=0)
     power = bpy.props.FloatProperty(name='Power', default=0.75)
     momentum = bpy.props.FloatProperty(name='Momentum', default=0.9, min=0)
+    momentum2 = bpy.props.FloatProperty(name='Momentum2',default = 0.999,)
     weight_decay = bpy.props.FloatProperty(name='Weight Decay', default=0.0005, min=0)
 
     regularization_type = bpy.props.EnumProperty(name='Regularization type', items=regularization_types, default='L2')
 
     stepsize = bpy.props.IntProperty(name='Step size', default=5000, min=1)
 
-    # TODO: Finish stepvalue and multistep
-    # stepvalue
-
-    # TODO: Maybe add clip gradients
 
     snapshot = bpy.props.IntProperty(name='Snapshot Interval', default=0, min=0,
                                      description="The snapshot interval. 0 for no snapshot")
@@ -1791,9 +1788,12 @@ class SolverNode(Node, CaffeTreeNode):
     random_seed = bpy.props.IntProperty(name='Random seed', default=10,
                                         description="The seed with which the Solver will initialize the Caffe random number generator")
 
-    solver_types = [("NESTEROV", "NESTEROV", "Nesterovs Accelerated Gradient"),
-                    ("ADAGRAD", "ADAGRAD", "Adaptive gradient descent"),
-                    ("SGD", "SGD", "Stochastic Gradient Descent"),("RMSProp", "RMSProp", "RMSProp")]
+    solver_types = [("Nesterov", "Nesterov", "Nesterovs Accelerated Gradient"),
+                    ("AdaGrad", "AdaGrad", "Adaptive gradient descent"),
+                    ("SGD", "SGD", "Stochastic Gradient Descent"),
+                    ("RMSProp", "RMSProp", "RMSProp"),
+                    ("Adam","Adam","Adam"),
+                    ("AdaDelta","AdaDelta","AdaDelta")]
     solver_type = bpy.props.EnumProperty(name='Solver type', items=solver_types, default='SGD')
 
     delta = bpy.props.FloatProperty(name='Delta', default=1e-8, min=0, description="Numerical stability for AdaGrad")
@@ -1805,24 +1805,6 @@ class SolverNode(Node, CaffeTreeNode):
 
 
 
-    #    solver = bpy.props.EnumProperty(name="Mode", default='SGD', items=modes)
-    #    compmode = bpy.props.EnumProperty(name="Compute Mode", default='GPU', items=computemodes)
-    #
-    #    accum = bpy.props.BoolProperty(name='Accumulate Gradients',default=True)
-    #    accumiters = bpy.props.IntProperty(name='Number of minibatches to Accumulate',default=1 ,min=1,soft_max=10)
-    #    testinterval = bpy.props.IntProperty(name='Test Interval',default=500, min=1, soft_max=2000)
-    #    testruns = bpy.props.IntProperty(name='Test Batches',default=50, min=1, soft_max=200)
-    #    displayiter = bpy.props.IntProperty(name='Display iter.',default=100, min=1, soft_max=5000)
-    #    maxiter = bpy.props.IntProperty(name='Final iteration',default=50000, min=5, soft_max=100000)
-    #    learningrate = bpy.props.FloatProperty(name = 'Learning rate',default=0.01, min=0.001, soft_max=1)
-    #    snapshotiter = bpy.props.IntProperty(name = 'Snapshot iteration',default=10000, min=10, soft_max=50000)
-    #    snapshotpath = bpy.props.StringProperty \
-    #        (
-    #            name="Snapshot Data Path",
-    #            default="",
-    #            description="Give the path to the snapshot data",
-    #            subtype='DIR_PATH'
-    #        )
 
 
 
@@ -1871,14 +1853,13 @@ class SolverNode(Node, CaffeTreeNode):
         layout.prop(self, "test_interval")
         layout.prop(self, "test_compute_loss")
         layout.prop(self, "test_initialization")
-        layout.prop(self, "base_lr")
         layout.prop(self, "display")
         layout.prop(self, "average_loss")
         layout.prop(self, "max_iter")
         layout.prop(self, "iter_size")
 
         layout.prop(self, "lr_policy")
-
+        layout.prop(self, "base_lr")
         if self.lr_policy == 'step':
             layout.prop(self, "gamma")
             layout.prop(self, "stepsize")
@@ -1894,8 +1875,6 @@ class SolverNode(Node, CaffeTreeNode):
         elif self.lr_policy == 'sigmoid':
             layout.prop(self, "gamma")
             layout.prop(self, "stepsize")
-
-        layout.prop(self, "momentum")
         layout.prop(self, "weight_decay")
         layout.prop(self, "regularization_type")
 
@@ -1918,8 +1897,10 @@ class SolverNode(Node, CaffeTreeNode):
             layout.prop(self, "random_seed")
 
         layout.prop(self, "solver_type")
+        if self.solver_type not in ['AdaGrad','RMSProp']:
+            layout.prop(self, "momentum")
 
-        if self.solver_type == 'ADAGRAD':
+        if self.solver_type == 'AdaDelta':
             layout.prop(self, "delta")
         if self.solver_type == 'RMSProp':
             layout.prop(self, "RMSdecay")
@@ -1929,38 +1910,6 @@ class SolverNode(Node, CaffeTreeNode):
         layout.prop(self, "caffe_exec")
 
 
-# layout.prop(self, "display")
-#        layout.prop(self, "display")
-#        
-#        
-#        
-#        layout.prop(self, "solvername")
-#        layout.prop(self, "solver")
-#        layout.prop(self, "compmode")
-#
-#        ########################GPUS
-#        if not self.gpufailed:
-#            layout.label("Multiple GPUs req. parallel caffe branch",icon='ERROR')
-#        else:
-#            layout.label("WARNING: GPU NOT DETECTED",icon='ERROR')
-#            layout.label("Check 'nvidia-smi' command can be run",icon='ERROR')
-#        if self.compmode == 'GPU':
-#            for i,name in enumerate(self.gputoggles):
-#                layout.prop(self, "gpus",index=i,text=name,toggle=True)
-#        ###############Accumulate batches
-#        layout.prop(self, "accum")
-#        if self.accum:
-#            layout.prop(self,"accumiters")
-#        #layout.prop(self, "gpu")
-#        layout.prop(self, "testinterval")
-#        layout.prop(self, "testruns")
-#        layout.prop(self, "displayiter")
-#        layout.prop(self, "maxiter")
-#        layout.prop(self, "learningrate")
-#        layout.prop(self, "snapshotiter")
-#        layout.prop(self, "snapshotpath")
-#        layout.prop(self, "configpath")
-#        layout.prop(self, "caffexec")
 
 import nodeitems_utils
 from nodeitems_utils import NodeCategory, NodeItem
