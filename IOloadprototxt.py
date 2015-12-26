@@ -161,7 +161,7 @@ class textlayerob(object):
                                   'normalize_variance', 'mirror', 'is_color', 'new_width', 'new_height', 'shuffle',
                                   'rand_skip', 'test_compute_loss', 'test_iter']
         SimpleStringProperties = ['solver_mode', 'lr_policy', 'solver_type', 'regularization_type', 'operation',
-                                  'mean_file']
+                                  'mean_file','module','layer']
         for prop in SimpleNumberProperties:
             findsetbeforecolon(prop, node, chunkstring, True)
         for prop in SimpleStringProperties:
@@ -177,6 +177,7 @@ class textlayerob(object):
                     node.solvername = node.solvername[15:]
             else:
                 node.solvername = 'CGTLoaded'
+        node.w = findfirst('loss_weight: {:g}\n',chunkstring)
         node.OutMaxVal = findfirst('out_max_val: {:g}\n', chunkstring)  ################
         node.TopK = findfirst('top_k: {:g}\n', chunkstring)  ###################
         node.filename = findfirst('file_name: {}', chunkstring)  #######################
@@ -263,7 +264,7 @@ def LoadFunction(prototxt, y, x, nh=False, nw=False, h=False, w=False,operatorse
                  'Concat': 'ConcatNodeType', 'Accuracy': 'AccuracyNodeType',
                  'ArgMax': 'ArgMaxNodeType', 'HDF5Output': 'HDF5OutputNodeType', 'Log': 'LogNodeType',
                  'Power': 'PowerNodeType', 'Reduction': 'ReductionNodeType', 'Slice': 'SliceNodeType',
-                 'MVN': 'MVNNodeType', 'Solver': 'SolverNodeType', 'Data': 'DataNodeType'}
+                 'MVN': 'MVNNodeType', 'Solver': 'SolverNodeType', 'Data': 'DataNodeType','Python':'PythonLossNodeType'}
     textlayers = getlayers(prototxt)
     prevtrees = bpy.data.node_groups.items()
     for tree in prevtrees:

@@ -1098,11 +1098,11 @@ class ActivationNode(Node, CaffeTreeNode):
     # Icon identifier
     bl_icon = 'SOUND'
     modes = [
-        ('"Sigmoid"', "Sigmoid", "Sigmoid"),
-        ('"TanH"', "TanH", "TanH"),
+        ("Sigmoid", "Sigmoid", "Sigmoid"),
+        ("TanH", "TanH", "TanH"),
     ]
     # === Custom Properties ===
-    mode = bpy.props.EnumProperty(name="Mode", default='"Sigmoid"', items=modes)
+    n_type = bpy.props.EnumProperty(name="Mode", default='Sigmoid', items=modes)
     # === Optional Functions ===
     def init(self, context):
         self.inputs.new('NAFlatSocketType', "Linear input")
@@ -1118,7 +1118,7 @@ class ActivationNode(Node, CaffeTreeNode):
 
     # Additional buttons displayed on the node.
     def draw_buttons(self, context, layout):
-        layout.prop(self, "mode")
+        layout.prop(self, "n_type")
         self.draw_extra_params(context, layout)
 
 
@@ -1250,7 +1250,7 @@ class SCELossNode(Node, CaffeTreeNode):
 
     n_type = 'SigmoidCrossEntropyLoss'
 
-    w = bpy.props.FloatProperty(default=0)
+    w = bpy.props.FloatProperty(default=1)
     # === Custom Properties ===
     # === Optional Functions ===
     def init(self, context):
@@ -1286,7 +1286,7 @@ class EULossNode(Node, CaffeTreeNode):
 
     n_type = 'EuclideanLoss'
 
-    w = bpy.props.FloatProperty(default=0)
+    w = bpy.props.FloatProperty(default=1)
     # === Custom Properties ===
     # === Optional Functions ===
     def init(self, context):
@@ -1622,6 +1622,51 @@ class ReductionNode(Node, CaffeTreeNode):
         self.draw_extra_params(context, layout)
 
 
+class PythonLossNode(Node,CaffeTreeNode):
+    # === Basics ===
+    # Description string
+    '''Python Loss Node'''
+    # Optional identifier string. If not explicitly defined, the python class name is used.
+    bl_idname = 'PythonLossNodeType'
+    # Label for nice name display
+    bl_label = 'Python Loss Node'
+    # Icon identifier
+    bl_icon = 'SOUND'
+
+    n_type = 'Python'
+
+    # === Custom Properties ===
+    modulepath = bpy.props.StringProperty(
+        name="Module Dir",
+        default="",
+        description="Python Module Directory",
+        subtype='DIR_PATH'
+    )
+    module = bpy.props.StringProperty(name="Module")
+    layer = bpy.props.StringProperty(name='Python Layer Class')
+    w = bpy.props.FloatProperty(default=1)
+    # === Optional Functions ===
+    def init(self, context):
+        self.inputs.new('AFlatSocketType', "Input values")
+        self.inputs.new('AFlatSocketType', "Input values 2")
+        self.outputs.new('OutputSocketType', "Loss output")
+
+    # Copy function to initialize a copied node from an existing one.
+    def copy(self, node):
+        print("Copying from node ", node)
+
+    # Free function to clean up on removal.
+    def free(self):
+        print("Removing node ", self, ", Goodbye!")
+
+    # Additional buttons displayed on the node.
+    def draw_buttons(self, context, layout):
+        layout.prop(self, "modulepath")
+        layout.prop(self, "module")
+        layout.prop(self, "layer")
+        layout.prop(self, "w")
+
+
 class slice_point_p_g(bpy.types.PropertyGroup):
     slice_point = bpy.props.IntProperty(min=0)
 
@@ -1926,7 +1971,7 @@ class CaffeNodeCategory(NodeCategory):
 # all categories in a list
 node_categories = [
     # identifier, label, items list
-    CaffeNodeCategory("PNODES", "Processing Nodes", items=[
+    CaffeNodeCategory("PNODES", "Spatial, Image Nodes", items=[
         # our basic node
         NodeItem("PoolNodeType"),
         NodeItem("ConvNodeType"),
@@ -1935,7 +1980,7 @@ node_categories = [
         NodeItem("ConcatNodeType"),
         NodeItem("SliceNodeType")
     ]),
-    CaffeNodeCategory("NNODES", "Neuron Nodes", items=[
+    CaffeNodeCategory("NNODES", "Neuron, Elementwise Nodes", items=[
         # our basic node
         NodeItem("MVNNodeType"),
         NodeItem("ExpNodeType"),
@@ -1950,18 +1995,19 @@ node_categories = [
         NodeItem("LogNodeType"),
         NodeItem("PowerNodeType")
     ]),
-    CaffeNodeCategory("SNODES", "Solver Nodes", items=[
+    CaffeNodeCategory("SNODES", "Loss Nodes", items=[
         # our basic node
-        NodeItem("SolverNodeType"),
         NodeItem("AccuracyNodeType"),
         NodeItem("EULossNodeType"),
         NodeItem("SCELossNodeType"),
         NodeItem("SMLossNodeType"),
-        NodeItem("ReductionNodeType")
+        NodeItem("ReductionNodeType"),
+        NodeItem("PythonLossNodeType")
 
     ]),
-    CaffeNodeCategory("DNODES", "Data Nodes", items=[
+    CaffeNodeCategory("DNODES", "Solver, data Nodes", items=[
         # our basic node
+        NodeItem("SolverNodeType"),
         NodeItem("DataNodeType"),
         NodeItem("HDF5OutputNodeType")
     ]),
@@ -2011,6 +2057,7 @@ def register():
     bpy.utils.register_class(LogNode)
     bpy.utils.register_class(PowerNode)
     bpy.utils.register_class(ReductionNode)
+    bpy.utils.register_class(PythonLossNode)
     bpy.utils.register_class(SliceNode)
 
     nodeitems_utils.register_node_categories("CUSTOM_NODES", node_categories)
@@ -2057,6 +2104,7 @@ def unregister():
     bpy.utils.unregister_class(LogNode)
     bpy.utils.unregister_class(PowerNode)
     bpy.utils.unregister_class(ReductionNode)
+    bpy.utils.unregister_class(PythonLossNode)
     bpy.utils.unregister_class(SliceNode)
 
 

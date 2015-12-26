@@ -212,6 +212,16 @@ def Concattemplate(node):
     return string
 
 
+def pythonLosstemplate(node):
+    string = '''\
+    python_param {
+        module:"%s"
+        layer:"%s"
+    }
+    ''' % (node.module,node.layer)
+    return string
+
+
 def argmaxtemplate(node):
     string = '''\
     argmax_param {
@@ -373,18 +383,31 @@ input_shape {
     return deploystring
 
 
-def scripttemplate(caffepath, configpath, solvername, gpus, solver):
-    gpustring = ''
-    usedcount = 0
+class script(object):
+    def __init__(self,caffepath, configpath, solvername, gpus, solver):
+        self.caffepath = caffepath
+        self.configpath = configpath
+        self.solvername = solvername
+        self.gpus = gpus
+        self.solver = solver
 
-    extrastring = ''
-    if solver == 'GPU' and gpus:
-        extrastring = '--gpu=%s' % gpus[-1]
+    def make(self):
+        if hasattr(self,'extra_paths'):
+            pathadd = 'PYTHONPATH=$PYTHONPATH:'+':'.join(self.extra_paths)
+        else:
+            pathadd = ''
+        gpustring = ''
+        usedcount = 0
 
-    solverstring = configpath + '%s_solver.prototxt' % solvername
-    caffestring = caffepath + 'caffe'
-    string = "#!/usr/bin/env sh \n '%s' train --solver='%s' %s" % (caffestring, solverstring, extrastring)
-    return string
+        extrastring = ''
+        if self.solver == 'GPU' and self.gpus:
+            extrastring = '--gpu=%s' % self.gpus[-1]
+
+        solverstring = self.configpath + '%s_solver.prototxt' % self.solvername
+        caffestring = self.caffepath + 'caffe'
+
+        string = "#!/usr/bin/env sh \n%s '%s' train --solver='%s' %s" % (pathadd,caffestring, solverstring, extrastring)
+        return string
 
 
 def loss_weight_template(loss_weight):
@@ -578,6 +601,7 @@ def getbottomsandtops(node, orderpass=0):
 
 def SolveFunction(context, operatorself=None):
     graph = []
+    extra_paths = []
     DataNode = False
     for space in bpy.context.area.spaces:
         if space.type == 'NODE_EDITOR':
@@ -649,8 +673,8 @@ def SolveFunction(context, operatorself=None):
             special_params.append(FC_template(node))
         elif node.bl_idname == 'LRNNodeType':
             special_params.append(LRNtemplate(node))
-        elif node.bl_idname == 'AcNodeType':
-            node.type = node.mode
+        # elif node.bl_idname == 'AcNodeType':
+        #     node.type = node.mode
         elif node.bl_idname == 'ReluNodeType':
             special_params.append(Relutemplate(node))
         elif node.bl_idname == 'PReluNodeType':
@@ -666,6 +690,10 @@ def SolveFunction(context, operatorself=None):
         elif node.bl_idname == 'EULossNodeType':
             special_params.append(loss_weight_template(node.w))
             deploy = False
+        elif node.bl_idname == 'PythonLossNodeType':
+            special_params.append(pythonLosstemplate(node))
+            special_params.append(loss_weight_template(node.w))
+            extra_paths.append(node.modulepath)
         elif node.bl_idname == 'AccuracyNodeType':
             deploy = False
         elif node.bl_idname == 'ConcatNodeType':
@@ -684,8 +712,7 @@ def SolveFunction(context, operatorself=None):
             special_params.append(slicetemplate(node))
         elif node.bl_idname == 'SolverNodeType':
             solverstring = solver_template(node)
-            scriptstring = scripttemplate(node.caffe_exec, node.config_path, node.solvername, node.gpus,
-                                          solver=node.solver_mode)
+            scriptmaker = script(node.caffe_exec, node.config_path, node.solvername, node.gpus,node.solver_mode)
             if not node.config_path and operatorself:
                 operatorself.report({'ERROR'}, "Solver node config path not set")
                 return {'FINISHED'}
@@ -715,6 +742,8 @@ def SolveFunction(context, operatorself=None):
     if not DataNode:
         operatorself.report({'ERROR'}, "No Data Node in output. Output will be deploy only")
         Isize = [0,0,0,0]
+    scriptmaker.extra_paths = extra_paths
+    scriptstring = scriptmaker.make()
     strings, dstrings = reorder(graph)
     solution = ''.join(strings)
     dsolution = ''.join(dstrings)
