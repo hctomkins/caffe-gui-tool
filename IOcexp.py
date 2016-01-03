@@ -55,10 +55,7 @@ def LoadCexpFunction(context, tempdata, datacube, loadloss, loadtree):
     if loadtree:
         datacube["originaltree"] = os.path.split(tempdata)[1]
         ## Load node graph from cexp
-        prevtrees = bpy.data.node_groups.items()
-        LoadFunction(prototxt, 0, 0, nh, nw, h, w)
-        newtrees = bpy.data.node_groups.items()
-        tree = list(set(newtrees) - set(prevtrees))[0][1]
+        tree = LoadFunction(prototxt, 0, 0, nh, nw, h, w)
         tree.name = os.path.split(tempdata)[1]
         ArrangeFunction(context, treename=tree.name)
 

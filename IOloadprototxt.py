@@ -6,6 +6,7 @@ from .CGTArrangeHelper import ArrangeFunction
 from .IOparse import search as findfirstraw
 import bpy
 import string
+import types as typemod
 
 
 def format_filename(s):
@@ -23,11 +24,17 @@ class nodeclass(object):
     pass
 
 
-def findfirst(search, string):
+def findfirst(search, string):#,strip=False):
     searchresult = findfirstraw(search, string)
     if searchresult:
         toset = searchresult.fixed[0]
-        return toset
+        # if not strip:
+        #     return toset
+        # else:
+        if toset and type(toset)==str:
+            return toset.strip(' ')
+        else:
+            return toset
 
 
 def findsetbeforecolon(attr, ob, chunk, number=False):
@@ -76,6 +83,7 @@ def getsize(deploy):
 
 
 class textlayerob(object):
+    ''' An object that takes text, parses it, and manages the values within it'''
     def __init__(self, chunkstring):
         self.chunkstring = chunkstring
         self.bottoms = []
@@ -99,11 +107,13 @@ class textlayerob(object):
         if decaymults:
             node.extra_params = True
             node.weight_params.decay_mult = decaymults[0]
-            node.bias_params.decay_mult = decaymults[1]
+            if len(decaymults)==2:
+                node.bias_params.decay_mult = decaymults[1]
         if lrmults:
             node.extra_params = True
             node.weight_params.lr_mult = lrmults[0]
-            node.bias_params.lr_mult = lrmults[1]
+            if len(lrmults)==2:
+                node.bias_params.lr_mult = lrmults[1]
         findsetbeforecolon('kernel_size', node, chunkstring, True)
         if not node.kernel_size:
             findsetbeforecolon('kernel_h', node, chunkstring, True)
@@ -264,12 +274,13 @@ def LoadFunction(prototxt, y, x, nh=False, nw=False, h=False, w=False,operatorse
                  'Concat': 'ConcatNodeType', 'Accuracy': 'AccuracyNodeType',
                  'ArgMax': 'ArgMaxNodeType', 'HDF5Output': 'HDF5OutputNodeType', 'Log': 'LogNodeType',
                  'Power': 'PowerNodeType', 'Reduction': 'ReductionNodeType', 'Slice': 'SliceNodeType',
-                 'MVN': 'MVNNodeType', 'Solver': 'SolverNodeType', 'Data': 'DataNodeType','Python':'PythonLossNodeType'}
+                 'MVN': 'MVNNodeType', 'Solver': 'SolverNodeType', 'Data': 'DataNodeType','HDF5Data': 'DataNodeType','ImageData': 'DataNodeType','Python':'PythonLossNodeType'}
     textlayers = getlayers(prototxt)
-    prevtrees = bpy.data.node_groups.items()
-    for tree in prevtrees:
+    trees = bpy.data.node_groups.items()
+    for tree in trees:
         if tree[1].name == 'Loaded':
             bpy.data.node_groups["Loaded"].name = "Loaded(old)"
+    prevtrees = bpy.data.node_groups.items()
     bpy.ops.node.new_node_tree(type='CaffeNodeTree', name="NodeTree")
     newtrees = bpy.data.node_groups.items()
     tree = list(set(newtrees) - set(prevtrees))[0][1]
@@ -281,6 +292,7 @@ def LoadFunction(prototxt, y, x, nh=False, nw=False, h=False, w=False,operatorse
     for textlayer in textlayers:
         nodesbefore = bpy.data.node_groups[tree.name].nodes.items()
         tree.nodes.new(nodetypes[textlayer.type])
+        print ('Added ' + textlayer.type)
         nodesafter = bpy.data.node_groups[tree.name].nodes.items()
         node = list(set(nodesafter) - set(nodesbefore))[0][1]
         node.select = True
@@ -303,8 +315,8 @@ def LoadFunction(prototxt, y, x, nh=False, nw=False, h=False, w=False,operatorse
                             getattr(getattr(textlayer.node, basicparametername), parametername))
         if 'Data' in textlayer.type:
             Datanode = True
-            for pos in range(2):
-                node.outputs[pos].output_name = textlayer.tops[pos]
+            for pos,topname in enumerate(textlayer.tops):
+                node.outputs[pos].output_name = topname
             if nh or nw or h or w:
                 node.new_height = nh
                 node.height = h
@@ -354,6 +366,7 @@ def LoadFunction(prototxt, y, x, nh=False, nw=False, h=False, w=False,operatorse
                             link(startnode, endnode, startpos, endpos, links)
                             found = True
                 if not found:
+                    print ('not found')
                     print(top)
 
 
@@ -393,6 +406,7 @@ def LoadFunction(prototxt, y, x, nh=False, nw=False, h=False, w=False,operatorse
     if not Datanode:
         if operatorself:
             operatorself.report({'ERROR'}, "No Data Node in protoxt. Please add data node manually.")
+    return tree
 
 
 class Load(bpy.types.Operator):
@@ -415,13 +429,9 @@ class Load(bpy.types.Operator):
         wholefile = readprototxt(bpy.context.scene['traintest'])
         solve = readprototxt(bpy.context.scene['solver'])
         prototxt = wholefile + ['\nlayer {\n'] + ['type: "Solver"\n'] + solve + ['\n}\n']
-        prevtrees = bpy.data.node_groups.items()
-        LoadFunction(prototxt, y, x,operatorself=self)
-        newtrees = bpy.data.node_groups.items()
-        tree = list(set(newtrees) - set(prevtrees))[0][1]
-        tree.name = 'Loaded'
+        tree = LoadFunction(prototxt, y, x,operatorself=self)
         ArrangeFunction(context, treename=tree.name)
-
+        tree.name = 'Loaded'
         return {'FINISHED'}  # this lets blender know the operator finished successfully.
 
 
