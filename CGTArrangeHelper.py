@@ -220,7 +220,7 @@ def ArrangeFunction(context, treename=False):
                     if not isframe:
                         if (node != nodecheck):  # dont look for overlaps with self
                             if overlaps(node, nodecheck):
-                                node.location.y = nodecheck.location.y - nodecheck.dimensions.y - 0.5 * margin
+                                node.location.y = nodecheck.location.y - nodecheck.dimensions.y - margin
 
     newmidx, newmidy = treeMidPt(nodes)
     middiffx = newmidx - oldmidx
