@@ -26,6 +26,7 @@ def calcsize(self, context, axis='x'):
     fcsizes = []
     reversals = []
     passes = []
+    counter = 0
     while 1 == 1:
         if node.bl_idname in ["ConvNodeType", "PoolNodeType", "DeConvNodeType"]:
             if node.square_kernel:
@@ -120,6 +121,10 @@ def calcsize(self, context, axis='x'):
             fcsizes.extend([0])
             passes.extend([1])
             node = node.inputs[0].links[0].from_node
+        counter += 1
+        if counter > 1000:
+            x = 0
+            break
     return str(round(x, 2))
 
 
