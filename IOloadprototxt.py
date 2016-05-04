@@ -274,7 +274,7 @@ def LoadFunction(prototxt, y, x, nh=False, nw=False, h=False, w=False,operatorse
                  'Concat': 'ConcatNodeType', 'Accuracy': 'AccuracyNodeType',
                  'ArgMax': 'ArgMaxNodeType', 'HDF5Output': 'HDF5OutputNodeType', 'Log': 'LogNodeType',
                  'Power': 'PowerNodeType', 'Reduction': 'ReductionNodeType', 'Slice': 'SliceNodeType',
-                 'MVN': 'MVNNodeType', 'Solver': 'SolverNodeType', 'Data': 'DataNodeType','HDF5Data': 'DataNodeType','ImageData': 'DataNodeType','Python':'PythonLossNodeType'}
+                 'MVN': 'MVNNodeType','BatchNorm': 'BatchNormNodeType', 'Solver': 'SolverNodeType', 'Data': 'DataNodeType','HDF5Data': 'DataNodeType','ImageData': 'DataNodeType','Python':'PythonLossNodeType'}
     textlayers = getlayers(prototxt)
     trees = bpy.data.node_groups.items()
     for tree in trees:

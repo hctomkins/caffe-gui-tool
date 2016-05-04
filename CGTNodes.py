@@ -734,6 +734,46 @@ class MVNNode(Node, CaffeTreeNode):
         self.draw_extra_params(context, layout)
 
 
+class BatchNormNode(Node, CaffeTreeNode):
+    # === Basics ===
+    # Description string
+    '''Batch normalization node'''
+    # Optional identifier string. If not explicitly defined, the python class name is used.
+    bl_idname = 'BatchNormNodeType'
+    # Label for nice name display
+    bl_label = 'Batch Norm Node'
+    # Icon identifier
+    bl_icon = 'SOUND'
+    n_type = 'BatchNorm'
+    # === Custom Properties ===
+    use_global_stats = bpy.props.BoolProperty(default=True)
+    eps = bpy.props.FloatProperty(default=1e-5, soft_max=1.0, min=1e-20)
+    moving_average_fraction = bpy.props.FloatProperty(default=.999, soft_max=1.0, min=.5)
+
+    # === Optional Functions ===
+    def init(self, context):
+        self.inputs.new('ImageSocketType', "Input blob")
+        self.outputs.new('OutputSocketType', "Output blob")
+
+    # Copy function to initialize a copied node from an existing one.
+    def copy(self, node):
+        print("Copying from node ", node)
+
+    # Free function to clean up on removal.
+    def free(self):
+        print("Removing node ", self, ", Goodbye!")
+
+    # Additional buttons displayed on the node.
+    def draw_buttons(self, context, layout):
+        #TODO: Find a prototxt which shows how eps and mav are set
+        layout.label('''eps, mav, and use global average are all default.''')
+        layout.label('They will have sliders implemented when I can find')
+        layout.label('an example prototxt with them not default.')
+        # layout.prop(self, "use_global_stats")
+        # layout.prop(self, "moving_average_fraction")
+        # layout.prop(self, "eps")
+
+
 class ConvNode(Node, CaffeTreeNode):
     # === Basics ===
     # Description string
@@ -1983,7 +2023,8 @@ node_categories = [
         NodeItem("DeConvNodeType"),
         NodeItem("LRNNodeType"),
         NodeItem("ConcatNodeType"),
-        NodeItem("SliceNodeType")
+        NodeItem("SliceNodeType"),
+        NodeItem("BatchNormNodeType")
     ]),
     CaffeNodeCategory("NNODES", "Neuron, Elementwise Nodes", items=[
         # our basic node
@@ -2036,6 +2077,7 @@ def register():
     bpy.utils.register_class(PoolNode)
     bpy.utils.register_class(EltwiseNode)
     bpy.utils.register_class(MVNNode)
+    bpy.utils.register_class(BatchNormNode)
     bpy.utils.register_class(ExpNode)
     bpy.utils.register_class(ConvNode)
     bpy.utils.register_class(DeConvNode)
@@ -2083,6 +2125,7 @@ def unregister():
     bpy.utils.unregister_class(PoolNode)
     bpy.utils.unregister_class(EltwiseNode)
     bpy.utils.unregister_class(MVNNode)
+    bpy.utils.unregister_class(BatchNormNode)
     bpy.utils.unregister_class(ExpNode)
     bpy.utils.unregister_class(ConvNode)
     bpy.utils.unregister_class(DeConvNode)

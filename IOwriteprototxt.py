@@ -502,6 +502,19 @@ def dropouttemplate(node):
     ''' % (node.dropout_ratio)
     return string
 
+def batchnormtemplate(node):
+    string = '''\
+    param {
+        lr_mult: 0
+      }
+      param {
+        lr_mult: 0
+      }
+      param {
+        lr_mult: 0
+      }
+    '''
+    return string
 
 class Vertex():
     pass
@@ -681,6 +694,8 @@ def SolveFunction(context, operatorself=None):
             special_params.append(PReLU_template(node))
         elif node.bl_idname == 'DropoutNodeType':
             special_params.append(dropouttemplate(node))
+        elif node.bl_idname == 'BatchNormNodeType':
+            special_params.append(batchnormtemplate(node))
         elif node.bl_idname == 'SMLossNodeType':
             special_params.append(loss_weight_template(node.w))
             deploy = False
