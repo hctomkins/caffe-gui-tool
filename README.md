@@ -21,5 +21,5 @@ This a node based tool for creating caffe networks. It works inside the graphics
 
 ## UI screenshots
 
-![Nodes](https://dl.dropboxusercontent.com/u/10860244/CGT/Selection_032.png)
-![Graph](https://dl.dropboxusercontent.com/u/10860244/CGT/Selection_036.png)
+![Nodes](https://image.ibb.co/c6RiTa/Selection_032.png)
+![Graph](https://image.ibb.co/cc6TuF/Selection_036.png)
