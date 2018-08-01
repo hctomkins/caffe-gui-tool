@@ -1,3 +1,8 @@
+# Note
+This tool was written several years ago, for a slightly older version of caffe 1. Back in the day my coding skills were not what they are now.
+
+It proved incredibly useful for my research, and several others on github. Now I'm working back in this area, it is likely I will reimplement this in flask and d3, with better integration support. Please use this with the caveat it likely will not work for modern caffe releases.
+
 # Caffe Gui Tool (V2)
 This a node based tool for creating caffe networks. It works inside the graphics application 'blender' as a plugin. The reason for this is blender's highly stable, and universally compatible node editor.
 
